@@ -5,6 +5,7 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import { env } from "./config/env";
 import { healthRouter } from "./routes/health.routes";
+import { authRouter } from "./routes/auth.routes";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler";
 
 export function createApp() {
@@ -17,6 +18,7 @@ export function createApp() {
   app.use(cookieParser());
 
   app.use("/api/health", healthRouter);
+  app.use("/api/auth", authRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
