@@ -18,7 +18,9 @@ export function createApp() {
 
   app.use(helmet());
   app.use(cors({ origin: env.clientOrigin, credentials: true }));
-  app.use(morgan(env.nodeEnv === "development" ? "dev" : "combined"));
+  if (env.nodeEnv !== "test") {
+    app.use(morgan(env.nodeEnv === "development" ? "dev" : "combined"));
+  }
   app.use(express.json());
   app.use(cookieParser());
 

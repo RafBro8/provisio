@@ -95,7 +95,7 @@ export async function updateMyProfile(req: Request, res: Response): Promise<void
   const profile = await ProviderProfile.findOneAndUpdate(
     { userId: req.user!.id },
     { $set: update },
-    { new: true, runValidators: true },
+    { returnDocument: "after", runValidators: true },
   );
   if (!profile) {
     throw new AppError(404, "Provider profile not found");
