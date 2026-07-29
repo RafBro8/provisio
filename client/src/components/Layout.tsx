@@ -1,6 +1,15 @@
-import { Link, Outlet } from "react-router";
+import { Link, Outlet, useNavigate } from "react-router";
+import { useAuth } from "../context/AuthContext";
 
 export function Layout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleLogout(): Promise<void> {
+    await logout();
+    navigate("/");
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-slate-200 dark:border-slate-800">
@@ -12,6 +21,33 @@ export function Layout() {
             <Link to="/providers" className="hover:underline">
               Find a provider
             </Link>
+            {user ? (
+              <>
+                {user.role === "provider" && (
+                  <Link to="/provider/dashboard" className="hover:underline">
+                    Dashboard
+                  </Link>
+                )}
+                <Link to="/account" className="hover:underline">
+                  {user.name}
+                </Link>
+                <button type="button" onClick={handleLogout} className="hover:underline">
+                  Log out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="hover:underline">
+                  Log in
+                </Link>
+                <Link
+                  to="/register"
+                  className="rounded bg-slate-900 px-3 py-1.5 text-white dark:bg-white dark:text-slate-900"
+                >
+                  Sign up
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       </header>
