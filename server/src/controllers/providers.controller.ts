@@ -1,23 +1,52 @@
 import type { Request, Response } from "express";
-import { User, ProviderProfile, Service } from "../models";
+import { Types } from "mongoose";
+import { User, ProviderProfile, Service, Review } from "../models";
 import { AppError } from "../middleware/errorHandler";
 import { computeAvailableSlots } from "../services/availability.service";
 import { startOfDay, endOfDay } from "../utils/date";
 import { Appointment } from "../models/Appointment";
 
+interface RatingSummary {
+  avgRating: number;
+  reviewCount: number;
+}
+
+async function getRatingSummaries(providerIds: string[]): Promise<Map<string, RatingSummary>> {
+  const results = await Review.aggregate<{ _id: Types.ObjectId; avgRating: number; reviewCount: number }>([
+    { $match: { providerId: { $in: providerIds.map((id) => new Types.ObjectId(id)) } } },
+    { $group: { _id: "$providerId", avgRating: { $avg: "$rating" }, reviewCount: { $sum: 1 } } },
+  ]);
+
+  return new Map(
+    results.map((r) => [
+      r._id.toString(),
+      { avgRating: Math.round(r.avgRating * 10) / 10, reviewCount: r.reviewCount },
+    ]),
+  );
+}
+
 export async function listProviders(_req: Request, res: Response): Promise<void> {
   const providers = await User.find({ role: "provider" }).select("name");
-  const profiles = await ProviderProfile.find({
-    userId: { $in: providers.map((p) => p._id) },
-  });
+  const providerIds = providers.map((p) => String(p._id));
+
+  const [profiles, ratings] = await Promise.all([
+    ProviderProfile.find({ userId: { $in: providerIds } }),
+    getRatingSummaries(providerIds),
+  ]);
   const profileByUserId = new Map(profiles.map((p) => [p.userId.toString(), p]));
 
   res.json({
-    providers: providers.map((p) => ({
-      id: String(p._id),
-      name: p.name,
-      bio: profileByUserId.get(String(p._id))?.bio ?? "",
-    })),
+    providers: providers.map((p) => {
+      const id = String(p._id);
+      const rating = ratings.get(id);
+      return {
+        id,
+        name: p.name,
+        bio: profileByUserId.get(id)?.bio ?? "",
+        avgRating: rating?.avgRating ?? null,
+        reviewCount: rating?.reviewCount ?? 0,
+      };
+    }),
   });
 }
 
@@ -27,13 +56,21 @@ export async function getProviderDetail(req: Request, res: Response): Promise<vo
     throw new AppError(404, "Provider not found");
   }
 
-  const [profile, services] = await Promise.all([
+  const [profile, services, ratings] = await Promise.all([
     ProviderProfile.findOne({ userId: provider._id }),
     Service.find({ providerId: provider._id, isActive: true }),
+    getRatingSummaries([String(provider._id)]),
   ]);
+  const rating = ratings.get(String(provider._id));
 
   res.json({
-    provider: { id: String(provider._id), name: provider.name, bio: profile?.bio ?? "" },
+    provider: {
+      id: String(provider._id),
+      name: provider.name,
+      bio: profile?.bio ?? "",
+      avgRating: rating?.avgRating ?? null,
+      reviewCount: rating?.reviewCount ?? 0,
+    },
     services,
   });
 }

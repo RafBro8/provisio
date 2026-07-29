@@ -9,6 +9,8 @@ import { authRouter } from "./routes/auth.routes";
 import { providersRouter } from "./routes/providers.routes";
 import { servicesRouter } from "./routes/services.routes";
 import { bookingsRouter } from "./routes/bookings.routes";
+import { reviewsRouter } from "./routes/reviews.routes";
+import { notificationsRouter } from "./routes/notifications.routes";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler";
 
 export function createApp() {
@@ -25,6 +27,8 @@ export function createApp() {
   app.use("/api/providers", providersRouter);
   app.use("/api/services", servicesRouter);
   app.use("/api/bookings", bookingsRouter);
+  app.use("/api/reviews", reviewsRouter);
+  app.use("/api/notifications", notificationsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

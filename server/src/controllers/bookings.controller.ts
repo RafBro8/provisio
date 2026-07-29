@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { Appointment, ProviderProfile, Service } from "../models";
 import { AppError } from "../middleware/errorHandler";
 import { computeAvailableSlots } from "../services/availability.service";
+import { notify, notifyOtherParties } from "../services/notifications.service";
 import { startOfDay, endOfDay } from "../utils/date";
 
 const LATE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -77,6 +78,14 @@ export async function createBooking(req: Request, res: Response): Promise<void> 
       endTime: end,
       status: "booked",
     });
+
+    await notify(
+      providerId,
+      "booking_created",
+      `New booking: ${service.name} on ${start.toISOString()}`,
+      appointment._id,
+    );
+
     res.status(201).json({ appointment });
   } catch (err) {
     // Belt-and-suspenders: if two requests race past the check above for the
@@ -120,6 +129,14 @@ export async function cancelBooking(req: Request, res: Response): Promise<void> 
   appointment.cancellationReason = typeof req.body?.reason === "string" ? req.body.reason : undefined;
   appointment.lateCancellation = isLate;
   await appointment.save();
+
+  await notifyOtherParties(
+    appointment,
+    req.user!.id,
+    "booking_cancelled",
+    `Booking cancelled${isLate ? " (inside the 24h window)" : ""}`,
+    appointment._id,
+  );
 
   res.json({ appointment });
 }
@@ -173,6 +190,37 @@ export async function rescheduleBooking(req: Request, res: Response): Promise<vo
     }
     throw err;
   }
+
+  await notifyOtherParties(
+    appointment,
+    req.user!.id,
+    "booking_rescheduled",
+    `Booking rescheduled to ${newStart.toISOString()}`,
+    appointment._id,
+  );
+
+  res.json({ appointment });
+}
+
+export async function completeBooking(req: Request, res: Response): Promise<void> {
+  const appointment = await Appointment.findById(req.params.id);
+  if (!appointment) {
+    throw new AppError(404, "Booking not found");
+  }
+
+  const isProviderOwner = appointment.providerId.toString() === req.user!.id;
+  if (!isProviderOwner && req.user!.role !== "admin") {
+    throw new AppError(403, "Forbidden");
+  }
+  if (appointment.status !== "booked") {
+    throw new AppError(400, "Only booked appointments can be marked completed");
+  }
+  if (appointment.endTime.getTime() > Date.now()) {
+    throw new AppError(400, "Cannot mark a future appointment as completed");
+  }
+
+  appointment.status = "completed";
+  await appointment.save();
 
   res.json({ appointment });
 }
