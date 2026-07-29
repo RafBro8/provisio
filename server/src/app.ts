@@ -6,6 +6,9 @@ import cookieParser from "cookie-parser";
 import { env } from "./config/env";
 import { healthRouter } from "./routes/health.routes";
 import { authRouter } from "./routes/auth.routes";
+import { providersRouter } from "./routes/providers.routes";
+import { servicesRouter } from "./routes/services.routes";
+import { bookingsRouter } from "./routes/bookings.routes";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler";
 
 export function createApp() {
@@ -19,6 +22,9 @@ export function createApp() {
 
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
+  app.use("/api/providers", providersRouter);
+  app.use("/api/services", servicesRouter);
+  app.use("/api/bookings", bookingsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

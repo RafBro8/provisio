@@ -10,6 +10,8 @@ export interface IAppointment {
   endTime: Date;
   status: AppointmentStatus;
   cancellationReason?: string;
+  lateCancellation?: boolean;
+  lateReschedule?: boolean;
 }
 
 export type AppointmentDocument = HydratedDocument<IAppointment>;
@@ -28,11 +30,22 @@ const appointmentSchema = new Schema<IAppointment>(
       default: "booked",
     },
     cancellationReason: { type: String, trim: true },
+    lateCancellation: { type: Boolean, default: false },
+    lateReschedule: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
 
-// Availability lookups and conflict checks both filter by provider + time range.
-appointmentSchema.index({ providerId: 1, startTime: 1 });
+// Availability lookups filter by provider + time range, and this same index
+// doubles as the hard guarantee against double-booking: MongoDB enforces
+// uniqueness atomically, so two concurrent requests for the exact same
+// provider+startTime can't both succeed even without multi-document
+// transactions (which a single-node MongoDB instance doesn't support).
+// Scoped to status "booked" via a partial filter so a cancelled slot frees
+// up the time again.
+appointmentSchema.index(
+  { providerId: 1, startTime: 1 },
+  { unique: true, partialFilterExpression: { status: "booked" } },
+);
 
 export const Appointment = model<IAppointment>("Appointment", appointmentSchema);
