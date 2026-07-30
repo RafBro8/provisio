@@ -5,6 +5,9 @@ import { NotFound } from "./pages/NotFound";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { Account } from "./pages/Account";
+import { Providers } from "./pages/Providers";
+import { ProviderDetail } from "./pages/ProviderDetail";
+import { MyBookings } from "./pages/MyBookings";
 import { ProviderDashboard } from "./pages/provider/Dashboard";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 
@@ -15,11 +18,21 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/providers" element={<Providers />} />
+        <Route path="/providers/:id" element={<ProviderDetail />} />
         <Route
           path="/account"
           element={
             <ProtectedRoute>
               <Account />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bookings"
+          element={
+            <ProtectedRoute roles={["customer"]}>
+              <MyBookings />
             </ProtectedRoute>
           }
         />

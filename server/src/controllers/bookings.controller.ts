@@ -99,12 +99,18 @@ export async function createBooking(req: Request, res: Response): Promise<void> 
 }
 
 export async function listMyBookingsAsCustomer(req: Request, res: Response): Promise<void> {
-  const appointments = await Appointment.find({ customerId: req.user!.id }).sort({ startTime: -1 });
+  const appointments = await Appointment.find({ customerId: req.user!.id })
+    .sort({ startTime: -1 })
+    .populate("providerId", "name")
+    .populate("serviceId", "name durationMinutes price");
   res.json({ appointments });
 }
 
 export async function listMyBookingsAsProvider(req: Request, res: Response): Promise<void> {
-  const appointments = await Appointment.find({ providerId: req.user!.id }).sort({ startTime: -1 });
+  const appointments = await Appointment.find({ providerId: req.user!.id })
+    .sort({ startTime: -1 })
+    .populate("customerId", "name")
+    .populate("serviceId", "name durationMinutes price");
   res.json({ appointments });
 }
 
