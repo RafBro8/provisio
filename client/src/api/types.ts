@@ -35,6 +35,27 @@ export interface Slot {
   endTime: string;
 }
 
+export interface WorkingHoursBlock {
+  dayOfWeek: number; // 0 (Sunday) – 6 (Saturday)
+  startTime: string; // 24h "HH:mm"
+  endTime: string;
+}
+
+export interface TimeOffBlock {
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}
+
+export interface ProviderProfile {
+  _id: string;
+  userId: string;
+  bio?: string;
+  bufferMinutes: number;
+  workingHours: WorkingHoursBlock[];
+  timeOff: TimeOffBlock[];
+}
+
 export type AppointmentStatus = "booked" | "cancelled" | "completed";
 
 export interface Appointment {

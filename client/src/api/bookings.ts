@@ -15,6 +15,14 @@ export function listMyBookings(): Promise<{ appointments: PopulatedAppointment[]
   return apiRequest<{ appointments: PopulatedAppointment[] }>("/bookings/mine");
 }
 
+export function listProviderBookings(): Promise<{ appointments: PopulatedAppointment[] }> {
+  return apiRequest<{ appointments: PopulatedAppointment[] }>("/bookings/provider-mine");
+}
+
+export function completeBooking(id: string): Promise<{ appointment: Appointment }> {
+  return apiRequest<{ appointment: Appointment }>(`/bookings/${id}/complete`, { method: "PATCH" });
+}
+
 export function cancelBooking(id: string, reason?: string): Promise<{ appointment: Appointment }> {
   return apiRequest<{ appointment: Appointment }>(`/bookings/${id}/cancel`, {
     method: "PATCH",
