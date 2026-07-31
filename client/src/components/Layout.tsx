@@ -33,6 +33,11 @@ export function Layout() {
                     My bookings
                   </Link>
                 )}
+                {user.role === "admin" && (
+                  <Link to="/admin/dashboard" className="hover:underline">
+                    Admin
+                  </Link>
+                )}
                 <Link to="/account" className="hover:underline">
                   {user.name}
                 </Link>

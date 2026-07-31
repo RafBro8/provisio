@@ -9,6 +9,7 @@ import { Providers } from "./pages/Providers";
 import { ProviderDetail } from "./pages/ProviderDetail";
 import { MyBookings } from "./pages/MyBookings";
 import { ProviderDashboard } from "./pages/provider/Dashboard";
+import { AdminDashboard } from "./pages/admin/Dashboard";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 
 function App() {
@@ -41,6 +42,14 @@ function App() {
           element={
             <ProtectedRoute roles={["provider"]}>
               <ProviderDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AdminDashboard />
             </ProtectedRoute>
           }
         />

@@ -114,6 +114,15 @@ export async function listMyBookingsAsProvider(req: Request, res: Response): Pro
   res.json({ appointments });
 }
 
+export async function listAllBookings(_req: Request, res: Response): Promise<void> {
+  const appointments = await Appointment.find({})
+    .sort({ startTime: -1 })
+    .populate("customerId", "name")
+    .populate("providerId", "name")
+    .populate("serviceId", "name durationMinutes price");
+  res.json({ appointments });
+}
+
 export async function cancelBooking(req: Request, res: Response): Promise<void> {
   const appointment = await Appointment.findById(req.params.id);
   if (!appointment) {
