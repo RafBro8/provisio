@@ -2,11 +2,16 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation, Link } from "react-router";
 import { getProviderDetail } from "../api/providers";
 import { createBooking } from "../api/bookings";
+import { listProviderReviews } from "../api/reviews";
 import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { SlotPicker } from "../components/SlotPicker";
-import { formatDateTime, todayIso } from "../lib/format";
-import type { ProviderDetail as ProviderDetailData, Service, Slot } from "../api/types";
+import { formatDateTime, formatStars, todayIso } from "../lib/format";
+import type { ProviderDetail as ProviderDetailData, Service, Slot, Review } from "../api/types";
+
+function resolveReviewerName(ref: string | { _id: string; name: string }): string {
+  return typeof ref === "string" ? "A customer" : ref.name;
+}
 
 export function ProviderDetail() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +27,9 @@ export function ProviderDetail() {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [confirmedSlot, setConfirmedSlot] = useState<Slot | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(true);
 
   useEffect(() => {
     if (!id) return;
@@ -31,6 +39,14 @@ export function ProviderDetail() {
         setSelectedService(res.services[0] ?? null);
       })
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : "Couldn't load this provider"));
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    listProviderReviews(id)
+      .then((res) => setReviews(res.reviews))
+      .catch((err) => setReviewsError(err instanceof ApiError ? err.message : "Couldn't load reviews"))
+      .finally(() => setIsLoadingReviews(false));
   }, [id]);
 
   function handleSelectService(service: Service): void {
@@ -175,6 +191,32 @@ export function ProviderDetail() {
           </div>
         </div>
       )}
+
+      <div className="mt-10">
+        <h2 className="font-medium">Reviews</h2>
+        {isLoadingReviews && <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Loading…</p>}
+        {reviewsError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{reviewsError}</p>}
+        {!isLoadingReviews && !reviewsError && reviews.length === 0 && (
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">No reviews yet.</p>
+        )}
+        {!isLoadingReviews && !reviewsError && reviews.length > 0 && (
+          <ul className="mt-3 flex flex-col gap-3">
+            {reviews.map((review) => (
+              <li key={review._id} className="rounded border border-slate-300 p-3 dark:border-slate-700">
+                <p className="text-amber-500" aria-label={`${review.rating} out of 5 stars`}>
+                  {formatStars(review.rating)}
+                </p>
+                {review.comment && (
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{review.comment}</p>
+                )}
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  — {resolveReviewerName(review.customerId)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

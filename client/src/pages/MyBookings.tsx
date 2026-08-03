@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listMyBookings, cancelBooking, rescheduleBooking } from "../api/bookings";
+import { createReview } from "../api/reviews";
 import { ApiError } from "../api/client";
 import { SlotPicker } from "../components/SlotPicker";
 import { formatDateTime, todayIso } from "../lib/format";
@@ -15,7 +16,7 @@ const STATUS_STYLES: Record<AppointmentStatus, string> = {
   completed: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
 };
 
-type ExpandedPanel = "none" | "cancel" | "reschedule";
+type ExpandedPanel = "none" | "cancel" | "reschedule" | "review";
 
 interface BookingRowProps {
   appointment: PopulatedAppointment;
@@ -29,6 +30,8 @@ function BookingRow({ appointment, onChange }: BookingRowProps) {
   const [cancelReason, setCancelReason] = useState("");
   const [rescheduleDate, setRescheduleDate] = useState(todayIso());
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
 
   const provider = resolveRef(appointment.providerId);
 
@@ -77,6 +80,24 @@ function BookingRow({ appointment, onChange }: BookingRowProps) {
     }
   }
 
+  async function handleSubmitReview(): Promise<void> {
+    setActionError(null);
+    setIsSubmitting(true);
+    try {
+      await createReview({
+        appointmentId: appointment._id,
+        rating: reviewRating,
+        comment: reviewComment.trim() || undefined,
+      });
+      onChange({ ...appointment, hasReview: true });
+      setExpanded("none");
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Couldn't submit your review");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <li className="rounded border border-slate-300 p-4 dark:border-slate-700">
       <div className="flex items-start justify-between gap-4">
@@ -118,6 +139,21 @@ function BookingRow({ appointment, onChange }: BookingRowProps) {
             {expanded === "reschedule" ? "Close" : "Reschedule"}
           </button>
         </div>
+      )}
+
+      {appointment.status === "completed" && !appointment.hasReview && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => toggle("review")}
+            className="rounded border border-slate-300 px-3 py-1.5 text-sm dark:border-slate-700"
+          >
+            {expanded === "review" ? "Never mind" : "Leave a review"}
+          </button>
+        </div>
+      )}
+      {appointment.status === "completed" && appointment.hasReview && (
+        <p className="mt-3 text-sm text-green-600 dark:text-green-400">✓ You reviewed this appointment</p>
       )}
 
       {actionError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{actionError}</p>}
@@ -175,6 +211,42 @@ function BookingRow({ appointment, onChange }: BookingRowProps) {
               {isSubmitting ? "Rescheduling…" : `Move to ${formatDateTime(selectedSlot.startTime)}`}
             </button>
           )}
+        </div>
+      )}
+
+      {expanded === "review" && (
+        <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <label className="flex w-fit flex-col gap-1 text-sm">
+            Rating
+            <select
+              value={reviewRating}
+              onChange={(e) => setReviewRating(Number(e.target.value))}
+              className="rounded border border-slate-300 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900"
+            >
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n} star{n === 1 ? "" : "s"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="mt-2 flex flex-col gap-1 text-sm">
+            Comment (optional)
+            <textarea
+              value={reviewComment}
+              onChange={(e) => setReviewComment(e.target.value)}
+              rows={2}
+              className="rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={handleSubmitReview}
+            disabled={isSubmitting}
+            className="mt-3 rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
+          >
+            {isSubmitting ? "Submitting…" : "Submit review"}
+          </button>
         </div>
       )}
     </li>

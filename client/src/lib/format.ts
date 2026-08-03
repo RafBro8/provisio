@@ -15,3 +15,8 @@ export function formatDateTime(iso: string): string {
 export function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+export function formatStars(rating: number): string {
+  const full = Math.round(rating);
+  return "★".repeat(full) + "☆".repeat(5 - full);
+}

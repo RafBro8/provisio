@@ -43,6 +43,8 @@ export async function createReview(req: Request, res: Response): Promise<void> {
 }
 
 export async function listProviderReviews(req: Request, res: Response): Promise<void> {
-  const reviews = await Review.find({ providerId: req.params.providerId }).sort({ createdAt: -1 });
+  const reviews = await Review.find({ providerId: req.params.providerId })
+    .sort({ createdAt: -1 })
+    .populate("customerId", "name");
   res.json({ reviews });
 }

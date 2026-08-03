@@ -79,7 +79,7 @@ describe("reviews routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("lists a provider's reviews publicly", async () => {
+  it("lists a provider's reviews publicly, with the reviewer's name populated", async () => {
     const { provider, service } = await setupProviderWithService(app, { dayOfWeek: 3 });
     const customer = await registerTestUser(app, "customer");
     const appointment = await createCompletedAppointment(provider.id, service._id, customer.id, service.durationMinutes);
@@ -89,5 +89,20 @@ describe("reviews routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.reviews).toHaveLength(1);
     expect(res.body.reviews[0].rating).toBe(3);
+    expect(res.body.reviews[0].customerId.name).toBe("Test Customer");
+  });
+
+  it("flags a reviewed appointment as hasReview:true in the customer's own booking list", async () => {
+    const { provider, service } = await setupProviderWithService(app, { dayOfWeek: 3 });
+    const customer = await registerTestUser(app, "customer");
+    const appointment = await createCompletedAppointment(provider.id, service._id, customer.id, service.durationMinutes);
+
+    const beforeReview = await customer.agent.get("/api/bookings/mine");
+    expect(beforeReview.body.appointments[0].hasReview).toBe(false);
+
+    await customer.agent.post("/api/reviews").send({ appointmentId: appointment._id, rating: 4 });
+
+    const afterReview = await customer.agent.get("/api/bookings/mine");
+    expect(afterReview.body.appointments[0].hasReview).toBe(true);
   });
 });

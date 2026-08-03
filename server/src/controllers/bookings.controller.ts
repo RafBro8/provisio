@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { Appointment, ProviderProfile, Service } from "../models";
+import { Appointment, ProviderProfile, Service, Review } from "../models";
 import { AppError } from "../middleware/errorHandler";
 import { computeAvailableSlots } from "../services/availability.service";
 import { notify, notifyOtherParties } from "../services/notifications.service";
@@ -102,8 +102,24 @@ export async function listMyBookingsAsCustomer(req: Request, res: Response): Pro
   const appointments = await Appointment.find({ customerId: req.user!.id })
     .sort({ startTime: -1 })
     .populate("providerId", "name")
-    .populate("serviceId", "name durationMinutes price");
-  res.json({ appointments });
+    .populate("serviceId", "name durationMinutes price")
+    .lean();
+
+  // The UI needs to know per-appointment whether a review already exists,
+  // so it can show "leave a review" vs. "already reviewed" instead of
+  // guessing and finding out from a 409 on submit.
+  const reviewedAppointmentIds = new Set(
+    (await Review.find({ customerId: req.user!.id }).select("appointmentId")).map((r) =>
+      r.appointmentId.toString(),
+    ),
+  );
+
+  res.json({
+    appointments: appointments.map((appointment) => ({
+      ...appointment,
+      hasReview: reviewedAppointmentIds.has(appointment._id.toString()),
+    })),
+  });
 }
 
 export async function listMyBookingsAsProvider(req: Request, res: Response): Promise<void> {

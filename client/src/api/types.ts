@@ -83,4 +83,16 @@ export interface PopulatedAppointment {
   cancellationReason?: string;
   lateCancellation?: boolean;
   lateReschedule?: boolean;
+  /** Only present on /bookings/mine — whether the customer already reviewed this appointment. */
+  hasReview?: boolean;
+}
+
+export interface Review {
+  _id: string;
+  appointmentId: string;
+  customerId: string | { _id: string; name: string };
+  providerId: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
 }
