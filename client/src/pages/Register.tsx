@@ -17,6 +17,17 @@ export function Register() {
   async function handleSubmit(e: FormEvent): Promise<void> {
     e.preventDefault();
     setError(null);
+
+    // The `minLength` attribute on the password input covers real browsers,
+    // but isn't a substitute for an explicit check here — form-level
+    // constraint validation can be bypassed (or, as discovered while adding
+    // this component's tests, isn't enforced consistently in every
+    // environment), so the same rule the backend enforces is checked here too.
+    if (password.length < 8) {
+      setError("password must be at least 8 characters");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await register({ name, email, password, role });

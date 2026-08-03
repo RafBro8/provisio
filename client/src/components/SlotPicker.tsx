@@ -58,6 +58,7 @@ export function SlotPicker({ providerId, serviceId, date, selectedSlot, onSelect
           <button
             key={slot.startTime}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onSelectSlot(slot)}
             className={`rounded border px-3 py-2 text-sm ${
               isSelected
