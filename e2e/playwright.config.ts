@@ -17,7 +17,11 @@ export default defineConfig({
   // startup-timing artifact, not flaky test logic). One retry absorbs that
   // without masking an actual regression, which would fail consistently.
   retries: process.env.CI ? 2 : 1,
-  reporter: "list",
+  // "list" for live console output; "html" so CI has something real to
+  // upload as an artifact (an empty reporter list means a failure's
+  // trace/screenshots are only ever visible in the raw log, not inspectable
+  // from the Actions UI).
+  reporter: [["list"], ["html", { open: "never" }]],
   globalSetup: require.resolve("./global-setup.ts"),
   use: {
     baseURL: FRONTEND_URL,
