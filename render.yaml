@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: provisio-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # The deployed frontend's origin — must match exactly (scheme + host,
+      # no trailing slash) since this drives both the CORS allow-list and
+      # the cookie's SameSite=None/Secure behavior (see auth.controller.ts).
+      - key: CLIENT_ORIGIN
+        value: https://provisio.vercel.app
+      # Secrets — intentionally not set here. Render will prompt for these
+      # in the dashboard when the blueprint is deployed, so they're never
+      # committed to the repo.
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
