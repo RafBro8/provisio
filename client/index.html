@@ -2,6 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      Applies the saved/system theme before anything paints, so there's no
+      flash of the wrong theme while React mounts and ThemeContext runs.
+      Kept in sync with client/src/context/ThemeContext.tsx's logic.
+    -->
+    <script>
+      (function () {
+        var stored = localStorage.getItem("provisio-theme");
+        var isDark =
+          stored === "dark" ||
+          (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (isDark) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Provisio</title>

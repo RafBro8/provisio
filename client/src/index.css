@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Switches `dark:` from following the OS preference automatically to being
+   driven by a `.dark` class on <html> instead, so ThemeToggle can override
+   the system preference rather than just reflect it. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 body {
   margin: 0;
   color-scheme: light dark;

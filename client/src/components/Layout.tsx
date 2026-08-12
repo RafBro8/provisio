@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Layout() {
   const { user, logout } = useAuth();
@@ -58,6 +59,7 @@ export function Layout() {
                 </Link>
               </>
             )}
+            <ThemeToggle />
           </div>
         </nav>
       </header>
