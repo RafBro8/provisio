@@ -4,7 +4,12 @@ services:
     runtime: node
     plan: free
     rootDir: server
-    buildCommand: npm install && npm run build
+    # --include=dev is required here: NODE_ENV=production (set below) makes
+    # plain `npm install`/`npm ci` skip devDependencies, but the build step
+    # needs typescript and the @types/* packages to run `tsc`. Runtime
+    # (`npm start`) only touches compiled JS, so this doesn't affect
+    # production behavior — it's purely a build-time requirement.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
