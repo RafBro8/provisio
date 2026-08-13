@@ -5,12 +5,16 @@ import { loginViaUi } from "./helpers/ui";
 import { daysFromNow } from "./helpers/dates";
 
 test("a customer can browse, book an appointment, and see it in My Bookings", async ({ page }) => {
-  const today = daysFromNow(0);
+  // Deliberately not "today": if this test happens to run near the UTC day
+  // boundary, "today" can have zero slots left (all already in the past),
+  // which isn't what this test is checking. A day out sidesteps that
+  // entirely since none of tomorrow's slots can ever be in the past yet.
+  const bookingDate = daysFromNow(1);
   const providerName = uniqueName("Career Coach");
 
-  step("Setting up a provider with wide-open hours today and one service");
+  step("Setting up a provider with wide-open hours tomorrow and one service");
   const { provider, service } = await setupProviderWithService({
-    dayOfWeek: today.dayOfWeek,
+    dayOfWeek: bookingDate.dayOfWeek,
     providerName,
     serviceName: "Career Coaching Session",
     durationMinutes: 30,
@@ -26,10 +30,10 @@ test("a customer can browse, book an appointment, and see it in My Bookings", as
   await page.getByPlaceholder(/search by name/i).fill(providerName);
   await page.getByRole("link").filter({ hasText: providerName }).click();
 
-  step("Selecting the service and today's date");
+  step("Selecting the service and the target date");
   await expect(page.getByRole("heading", { name: providerName })).toBeVisible();
   await page.getByRole("button", { name: new RegExp(service.name) }).click();
-  await page.locator('input[type="date"]').fill(today.iso);
+  await page.locator('input[type="date"]').fill(bookingDate.iso);
 
   step("Picking the first available slot");
   const slotButtons = page.locator("main button[aria-pressed]");

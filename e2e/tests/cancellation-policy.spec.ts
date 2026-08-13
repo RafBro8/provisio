@@ -34,17 +34,24 @@ test.describe("cancellation policy", () => {
 
   test("cancelling within the 24h window is flagged as late", async ({ page }) => {
     const today = daysFromNow(0);
+    const tomorrow = daysFromNow(1);
 
-    step("Setting up a provider with wide-open hours for today");
+    // Working hours span today AND tomorrow: today's slots can legitimately
+    // be exhausted if this test runs near the UTC day boundary (they're all
+    // in the past by then), in which case the soonest slot rolls over to
+    // tomorrow. Tomorrow's very first slot is still always within 24h of
+    // "now" (at most today's remaining minutes plus a few), so the test's
+    // invariant holds either way.
+    step("Setting up a provider with wide-open hours today and tomorrow");
     const { provider, service } = await setupProviderWithService({
-      dayOfWeek: today.dayOfWeek,
+      dayOfWeek: [today.dayOfWeek, tomorrow.dayOfWeek],
       serviceName: "Same-Day Consultation",
     });
 
     const customer = await registerViaApi("customer");
     await loginViaUi(page, customer.email, customer.password);
-    // The soonest slot the app will offer today is, by definition, within 24h.
-    await bookFirstAvailableSlot(page, provider.id, service.name, today.iso);
+    // The soonest slot the app will offer is, by definition, within 24h.
+    await bookFirstAvailableSlot(page, provider.id, service.name, [today.iso, tomorrow.iso]);
 
     step("Cancelling the booking immediately");
     await page.goto("/bookings");

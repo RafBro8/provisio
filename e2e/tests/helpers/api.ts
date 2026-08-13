@@ -57,20 +57,19 @@ export async function registerViaApi(
 
 export async function setProviderWorkingHours(
   provider: RegisteredUser,
-  options: { dayOfWeek: number; startTime?: string; endTime?: string; bufferMinutes?: number },
+  options: { dayOfWeek: number | number[]; startTime?: string; endTime?: string; bufferMinutes?: number },
 ): Promise<void> {
+  const days = Array.isArray(options.dayOfWeek) ? options.dayOfWeek : [options.dayOfWeek];
   const res = await fetch(`${API_URL}/providers/me/profile`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", Cookie: provider.cookie },
     body: JSON.stringify({
       bufferMinutes: options.bufferMinutes ?? 15,
-      workingHours: [
-        {
-          dayOfWeek: options.dayOfWeek,
-          startTime: options.startTime ?? "00:00",
-          endTime: options.endTime ?? "23:45",
-        },
-      ],
+      workingHours: days.map((dayOfWeek) => ({
+        dayOfWeek,
+        startTime: options.startTime ?? "00:00",
+        endTime: options.endTime ?? "23:45",
+      })),
     }),
   });
   if (!res.ok) {
@@ -114,7 +113,7 @@ export async function createServiceViaApi(
 
 /** Convenience: register a provider and give them wide-open hours + one service in a single call. */
 export async function setupProviderWithService(options: {
-  dayOfWeek: number;
+  dayOfWeek: number | number[];
   startTime?: string;
   endTime?: string;
   providerName?: string;

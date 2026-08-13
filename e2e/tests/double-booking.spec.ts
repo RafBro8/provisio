@@ -6,12 +6,16 @@ import { daysFromNow } from "./helpers/dates";
 import { API_URL } from "./helpers/constants";
 
 test("only one of two simultaneous booking attempts for the same slot succeeds", async ({ browser }) => {
-  const today = daysFromNow(0);
+  // Deliberately not "today": if this test happens to run near the UTC day
+  // boundary, "today" can have zero slots left (all already in the past),
+  // which isn't what this test is checking. A day out sidesteps that
+  // entirely since none of tomorrow's slots can ever be in the past yet.
+  const bookingDate = daysFromNow(1);
   const providerName = uniqueName("Race Condition Provider");
 
-  step("Setting up a provider with wide-open hours today and one service");
+  step("Setting up a provider with wide-open hours tomorrow and one service");
   const { provider, service } = await setupProviderWithService({
-    dayOfWeek: today.dayOfWeek,
+    dayOfWeek: bookingDate.dayOfWeek,
     providerName,
     serviceName: "Contested Slot Service",
   });
@@ -33,7 +37,7 @@ test("only one of two simultaneous booking attempts for the same slot succeeds",
     for (const page of [pageA, pageB]) {
       await page.goto(`/providers/${provider.id}`);
       await page.getByRole("button", { name: new RegExp(service.name) }).click();
-      await page.locator('input[type="date"]').fill(today.iso);
+      await page.locator('input[type="date"]').fill(bookingDate.iso);
     }
 
     const slotsA = pageA.locator("main button[aria-pressed]");
