@@ -6,6 +6,11 @@ A full-stack appointment booking platform for professional services (consultants
 
 [![CI](https://github.com/RafBro8/provisio/actions/workflows/ci.yml/badge.svg)](https://github.com/RafBro8/provisio/actions/workflows/ci.yml)
 
+<p>
+  <img src="docs/screenshot-light.png" alt="Provisio home page in light mode" width="49%" />
+  <img src="docs/screenshot-dark.png" alt="Provisio home page in dark mode" width="49%" />
+</p>
+
 ## Features
 
 - **Customer booking flow** — browse providers and their services, pick an open time slot, and book an appointment
