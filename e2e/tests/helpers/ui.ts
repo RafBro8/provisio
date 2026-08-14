@@ -7,7 +7,7 @@ export async function loginViaUi(page: Page, email: string, password: string): P
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole("button", { name: /^log in$/i }).click();
-  await page.waitForURL("http://localhost:5173/");
+  await page.waitForURL("/");
 }
 
 /**

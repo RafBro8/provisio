@@ -1,5 +1,12 @@
-export const FRONTEND_URL = "http://localhost:5173";
-export const BACKEND_URL = "http://localhost:4000";
+// TARGET_ENV lets this suite run against either a local dev stack (default)
+// or the live deployed app — set by claritas-e2e when it drives this suite
+// with its "Live" environment selected. Unset/anything else means local.
+const TARGET_ENV = process.env.TARGET_ENV === "live" ? "live" : "local";
+
+export const FRONTEND_URL =
+  TARGET_ENV === "live" ? "https://provisio-ten.vercel.app" : "http://localhost:5173";
+export const BACKEND_URL =
+  TARGET_ENV === "live" ? "https://provisio-api.onrender.com" : "http://localhost:4000";
 export const API_URL = `${BACKEND_URL}/api`;
 
 // A separate MongoDB database from the one used for everyday manual dev

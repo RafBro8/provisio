@@ -16,7 +16,7 @@ test.describe("auth", () => {
     await page.getByRole("button", { name: /create account/i }).click();
 
     step("Verifying the nav shows the new account as logged in");
-    await page.waitForURL("http://localhost:5173/");
+    await page.waitForURL("/");
     await expect(page.getByRole("link", { name: "Riley Customer" })).toBeVisible();
     await expect(page.getByRole("link", { name: "My bookings" })).toBeVisible();
   });
@@ -50,7 +50,7 @@ test.describe("auth", () => {
     await page.getByRole("button", { name: /^log in$/i }).click();
 
     step("Verifying we landed back on /account, not the home page");
-    await expect(page).toHaveURL("http://localhost:5173/account");
+    await expect(page).toHaveURL("/account");
     await expect(page.getByText(user.email)).toBeVisible();
   });
 });
