@@ -10,7 +10,18 @@ const SERVER_DIR = path.resolve(__dirname, "../server");
 // bcrypt-hashing logic here, this just runs the actual script the project
 // ships for provisioning admins (server/scripts/seed-admin.ts) against the
 // e2e database, pointed at throwaway test credentials.
+//
+// Only runs for the local target. Live mode has no local server/ checkout to
+// run this script from and no local MongoDB to seed into — this suite is
+// typically bundled standalone (just the e2e/ folder, no server/) wherever
+// it drives the live deployment from, e.g. claritas-e2e's Render backend.
+// admin-override.spec.ts is a known gap against live as a result: there's no
+// admin account on the real Atlas database with credentials this suite
+// knows, so that one spec is expected to fail there — every other spec
+// registers its own test users via the API and doesn't need this step.
 export default function globalSetup(): void {
+  if (process.env.TARGET_ENV === "live") return;
+
   execSync("npm run seed:admin", {
     cwd: SERVER_DIR,
     env: {
