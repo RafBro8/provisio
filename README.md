@@ -135,4 +135,4 @@ The frontend talks to the backend over HTTPS with credentialed (cookie-based) re
 
 ## Related project
 
-[claritas-e2e](#) — a companion UI that lets non-technical users trigger and monitor this project's Playwright test suite without touching a terminal. (Link will be added once that repo exists.)
+[claritas-e2e](https://github.com/RafBro8/claritas-e2e) — a companion UI that lets non-technical users trigger and monitor this project's Playwright test suite without touching a terminal. Live at [claritas-e2e.vercel.app](https://claritas-e2e.vercel.app).
