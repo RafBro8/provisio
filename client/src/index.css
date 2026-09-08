@@ -5,7 +5,63 @@
    the system preference rather than just reflect it. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Design tokens. The palette is deliberately warm rather than the usual cool
+   grey: an off-white ground with an ink (not black) text colour is what makes
+   this read as considered rather than default-Tailwind. Dark mode is a
+   violet-tinted near-black rather than a slate, so both modes sit in the same
+   temperature family and read as one brand in two moods. */
+@theme {
+  /* light */
+  --color-ground: #faf8f4;
+  --color-surface: #ffffff;
+  --color-ink: #221f2b;
+  --color-muted: #575065;
+  --color-faint: #9a9287;
+  --color-rule: #e7e2d9;
+  --color-rule-soft: #f0ece4;
+
+  /* dark */
+  --color-ground-dark: #16131c;
+  --color-surface-dark: #1e1a26;
+  --color-ink-dark: #f3efe9;
+  --color-muted-dark: #a9a0b6;
+  --color-faint-dark: #6f6780;
+  --color-rule-dark: #2b2536;
+  --color-rule-soft-dark: #262032;
+
+  /* brand — the gradient is reserved for a small number of things (the rule
+     under the headline, a selected slot, step numerals), never a background
+     wash, which is what keeps it feeling like an accent rather than decoration */
+  --color-brand: #7e14ff;
+  --color-brand-2: #47bfff;
+  --color-brand-soft: #9b4dff;
+  --color-brand-soft-2: #5ec8ff;
+
+  /* status — green booked, warm grey completed, amber cancelled, and red
+     reserved for the late-cancellation flag, the one state that costs money */
+  --color-ok-bg: #e4f4ea;
+  --color-ok-text: #2f6f4a;
+  --color-warn-bg: #fbeedd;
+  --color-warn-text: #8a5326;
+  --color-danger-bg: #fbe6e2;
+  --color-danger-text: #a24a3a;
+  --color-neutral-bg: #efebe3;
+
+  --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 body {
   margin: 0;
-  color-scheme: light dark;
+  background-color: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  color-scheme: light;
+}
+
+.dark body {
+  background-color: var(--color-ground-dark);
+  color: var(--color-ink-dark);
+  color-scheme: dark;
 }
