@@ -21,7 +21,7 @@ function BrandMark() {
 // change the DOM text, so accessible names (and the e2e locators that match
 // on them) stay exactly as written here.
 const navLinkClass =
-  "text-[13px] font-medium uppercase tracking-[0.085em] text-muted transition-colors hover:text-ink dark:text-muted-dark dark:hover:text-ink-dark";
+  "text-[11px] font-medium uppercase tracking-[0.06em] text-muted transition-colors hover:text-ink sm:text-[13px] sm:tracking-[0.085em] dark:text-muted-dark dark:hover:text-ink-dark";
 
 export function Layout() {
   const { user, logout } = useAuth();
@@ -35,13 +35,15 @@ export function Layout() {
   return (
     <div className="flex min-h-screen flex-col bg-ground text-ink dark:bg-ground-dark dark:text-ink-dark">
       <header className="border-b border-rule dark:border-rule-dark">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-6 sm:px-10">
+        {/* Wraps to a second row on narrow screens rather than overflowing —
+            keeps every destination reachable without a hamburger menu. */}
+        <nav className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-5 sm:px-10 sm:py-6">
           <Link to="/" className="flex items-center gap-2.5">
             <BrandMark />
             <span className="font-display text-2xl tracking-[-0.01em]">Provisio</span>
           </Link>
 
-          <div className="flex items-center gap-6 sm:gap-8">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-8">
             <Link to="/providers" className={navLinkClass}>
               Find a provider
             </Link>
@@ -80,7 +82,7 @@ export function Layout() {
                 </Link>
                 <Link
                   to="/register"
-                  className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-ground transition-opacity hover:opacity-90 dark:bg-ink-dark dark:text-ground-dark"
+                  className="rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-ground transition-opacity hover:opacity-90 sm:px-5 sm:py-2.5 sm:text-sm dark:bg-ink-dark dark:text-ground-dark"
                 >
                   Sign up
                 </Link>
