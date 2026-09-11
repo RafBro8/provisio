@@ -33,7 +33,8 @@ export interface ProviderListItem extends ProviderSummary {
 }
 
 export interface ProviderDetail {
-  provider: ProviderSummary;
+  /** timezone: the IANA zone the provider's working hours are in ("UTC" if they never set one). */
+  provider: ProviderSummary & { timezone: string };
   services: Service[];
 }
 
@@ -58,6 +59,8 @@ export interface ProviderProfile {
   _id: string;
   userId: string;
   bio?: string;
+  /** Unset until the provider saves one; the server reads unset as UTC. */
+  timezone?: string;
   bufferMinutes: number;
   workingHours: WorkingHoursBlock[];
   timeOff: TimeOffBlock[];

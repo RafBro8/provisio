@@ -2,9 +2,8 @@ import type { Request, Response } from "express";
 import { Types } from "mongoose";
 import { User, ProviderProfile, Service, Review } from "../models";
 import { AppError } from "../middleware/errorHandler";
-import { computeAvailableSlots } from "../services/availability.service";
-import { startOfDay, endOfDay } from "../utils/date";
-import { Appointment } from "../models/Appointment";
+import { findOpenSlots, providerTimeZone, DEFAULT_TIME_ZONE } from "../services/openSlots.service";
+import { addDaysIso, isIsoDate, isValidTimeZone, startOfZonedDay } from "../utils/date";
 
 interface RatingSummary {
   avgRating: number;
@@ -103,6 +102,7 @@ export async function getProviderDetail(req: Request, res: Response): Promise<vo
       bio: profile?.bio ?? "",
       avgRating: rating?.avgRating ?? null,
       reviewCount: rating?.reviewCount ?? 0,
+      timezone: profile ? providerTimeZone(profile) : DEFAULT_TIME_ZONE,
     },
     services,
   });
@@ -117,10 +117,15 @@ export async function getMyProfile(req: Request, res: Response): Promise<void> {
 }
 
 export async function updateMyProfile(req: Request, res: Response): Promise<void> {
-  const { bio, bufferMinutes, workingHours, timeOff } = req.body ?? {};
+  const { bio, bufferMinutes, workingHours, timeOff, timezone } = req.body ?? {};
+
+  if (timezone !== undefined && !isValidTimeZone(timezone)) {
+    throw new AppError(400, "Unknown time zone");
+  }
 
   const update: Record<string, unknown> = {};
   if (bio !== undefined) update.bio = bio;
+  if (timezone !== undefined) update.timezone = timezone;
   if (bufferMinutes !== undefined) update.bufferMinutes = bufferMinutes;
   if (workingHours !== undefined) update.workingHours = workingHours;
   if (timeOff !== undefined) update.timeOff = timeOff;
@@ -136,17 +141,24 @@ export async function updateMyProfile(req: Request, res: Response): Promise<void
   res.json({ profile });
 }
 
+/**
+ * Open slots for one calendar day. `date` is a day on the *customer's*
+ * calendar when they send their timezone as `tz` — so "Saturday" means their
+ * Saturday, however far the provider is from them. Without `tz`, the day is
+ * read on the provider's own calendar (how older clients behave).
+ */
 export async function getAvailability(req: Request, res: Response): Promise<void> {
-  const providerId = req.params.id;
-  const { serviceId, date } = req.query;
+  const providerId = String(req.params.id);
+  const { serviceId, date, tz } = req.query;
 
   if (typeof serviceId !== "string" || typeof date !== "string") {
     throw new AppError(400, "serviceId and date query params are required");
   }
-
-  const targetDate = new Date(date);
-  if (Number.isNaN(targetDate.getTime())) {
-    throw new AppError(400, "date must be a valid ISO date, e.g. 2026-08-03");
+  if (!isIsoDate(date)) {
+    throw new AppError(400, "date must be a calendar date, e.g. 2026-08-03");
+  }
+  if (tz !== undefined && !isValidTimeZone(tz)) {
+    throw new AppError(400, "tz must be an IANA time zone, e.g. America/Chicago");
   }
 
   const [profile, service] = await Promise.all([
@@ -156,19 +168,13 @@ export async function getAvailability(req: Request, res: Response): Promise<void
   if (!profile) throw new AppError(404, "Provider not found");
   if (!service) throw new AppError(404, "Service not found for this provider");
 
-  const dayBookings = await Appointment.find({
+  const viewerTimeZone = tz ?? providerTimeZone(profile);
+  const slots = await findOpenSlots({
     providerId,
-    status: "booked",
-    startTime: { $gte: startOfDay(targetDate), $lt: endOfDay(targetDate) },
-  });
-
-  const slots = computeAvailableSlots({
-    date: targetDate,
+    profile,
     serviceDurationMinutes: service.durationMinutes,
-    bufferMinutes: profile.bufferMinutes,
-    workingHours: profile.workingHours,
-    timeOff: profile.timeOff,
-    existingBookings: dayBookings.map((b) => ({ startTime: b.startTime, endTime: b.endTime })),
+    rangeStart: startOfZonedDay(date, viewerTimeZone),
+    rangeEnd: startOfZonedDay(addDaysIso(date, 1), viewerTimeZone),
   });
 
   res.json({ slots });

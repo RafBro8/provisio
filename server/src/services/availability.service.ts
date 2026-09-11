@@ -1,12 +1,13 @@
-import { startOfDay } from "../utils/date";
+import { addDaysIso, dayOfWeekIso, toIsoDate, zonedParts, zonedTimeToUtc } from "../utils/date";
 
 export interface WorkingHoursBlock {
   dayOfWeek: number; // 0 (Sunday) – 6 (Saturday)
-  startTime: string; // 24h "HH:mm"
+  startTime: string; // 24h "HH:mm", wall-clock time in the provider's timezone
   endTime: string;
 }
 
 export interface TimeOffBlock {
+  /** Date-only values, stored as UTC midnight of the calendar day they name. */
   startDate: Date;
   endDate: Date;
 }
@@ -21,17 +22,28 @@ export interface AvailableSlot {
   endTime: Date;
 }
 
-export interface ComputeAvailableSlotsParams {
-  date: Date;
+interface SlotRules {
   serviceDurationMinutes: number;
   bufferMinutes: number;
   workingHours: WorkingHoursBlock[];
   timeOff: TimeOffBlock[];
   existingBookings: BookedInterval[];
+  /** The provider's IANA timezone; working hours and dates are read in it. Defaults to UTC. */
+  timeZone?: string;
   /** Grid spacing between candidate slot start times. Defaults to the service duration. */
   slotIncrementMinutes?: number;
   /** Injectable for tests; defaults to the real current time. */
   now?: Date;
+}
+
+export interface ComputeAvailableSlotsParams extends SlotRules {
+  /** A calendar day on the provider's own calendar, "YYYY-MM-DD". */
+  date: string;
+}
+
+export interface ComputeSlotsInRangeParams extends SlotRules {
+  rangeStart: Date;
+  rangeEnd: Date;
 }
 
 function parseTimeToMinutes(time: string): number {
@@ -39,25 +51,16 @@ function parseTimeToMinutes(time: string): number {
   return hours * 60 + minutes;
 }
 
-function combineDateAndMinutes(date: Date, minutesOfDay: number): Date {
-  return new Date(startOfDay(date).getTime() + minutesOfDay * 60000);
-}
-
-function isWithinTimeOff(date: Date, timeOff: TimeOffBlock[]): boolean {
-  const day = startOfDay(date).getTime();
-  return timeOff.some((block) => {
-    const blockStart = startOfDay(block.startDate).getTime();
-    const blockEnd = startOfDay(block.endDate).getTime();
-    return day >= blockStart && day <= blockEnd;
-  });
+function isWithinTimeOff(date: string, timeOff: TimeOffBlock[]): boolean {
+  return timeOff.some((block) => date >= toIsoDate(block.startDate) && date <= toIsoDate(block.endDate));
 }
 
 /**
  * Pure function: given a provider's recurring working hours, time off, and
- * already-booked intervals for one day, returns the open slots for a
- * service of a given duration. No I/O — callers fetch the inputs from the
- * DB and this just does the interval math, which is what makes it cheap to
- * unit test exhaustively.
+ * already-booked intervals, returns the open slots on one day of the
+ * provider's calendar for a service of a given duration. No I/O — callers
+ * fetch the inputs from the DB and this just does the interval math, which
+ * is what makes it cheap to unit test exhaustively.
  */
 export function computeAvailableSlots(params: ComputeAvailableSlotsParams): AvailableSlot[] {
   const {
@@ -67,6 +70,7 @@ export function computeAvailableSlots(params: ComputeAvailableSlotsParams): Avai
     workingHours,
     timeOff,
     existingBookings,
+    timeZone = "UTC",
     slotIncrementMinutes,
     now = new Date(),
   } = params;
@@ -75,7 +79,7 @@ export function computeAvailableSlots(params: ComputeAvailableSlotsParams): Avai
     return [];
   }
 
-  const dayOfWeek = startOfDay(date).getUTCDay();
+  const dayOfWeek = dayOfWeekIso(date);
   const blocksForDay = workingHours.filter((block) => block.dayOfWeek === dayOfWeek);
   const increment = slotIncrementMinutes ?? serviceDurationMinutes;
 
@@ -98,7 +102,10 @@ export function computeAvailableSlots(params: ComputeAvailableSlotsParams): Avai
       slotStartMin + serviceDurationMinutes <= blockEndMin;
       slotStartMin += increment
     ) {
-      const slotStart = combineDateAndMinutes(date, slotStartMin);
+      // Null when the clocks skip this wall time (spring forward): the slot
+      // doesn't exist that day.
+      const slotStart = zonedTimeToUtc(date, slotStartMin, timeZone);
+      if (!slotStart) continue;
       const slotEnd = new Date(slotStart.getTime() + serviceDurationMinutes * 60000);
 
       if (slotStart < now) continue;
@@ -113,4 +120,30 @@ export function computeAvailableSlots(params: ComputeAvailableSlotsParams): Avai
   }
 
   return slots.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+}
+
+/**
+ * The provider's calendar days that overlap [rangeStart, rangeEnd) — usually
+ * one or two, since a customer's day rarely lines up with the provider's.
+ */
+export function providerDatesInRange(rangeStart: Date, rangeEnd: Date, timeZone: string): string[] {
+  const first = zonedParts(rangeStart, timeZone).date;
+  const last = zonedParts(new Date(rangeEnd.getTime() - 1), timeZone).date;
+  const dates = [first];
+  while (dates[dates.length - 1] < last) {
+    dates.push(addDaysIso(dates[dates.length - 1], 1));
+  }
+  return dates;
+}
+
+/**
+ * Open slots that start within [rangeStart, rangeEnd) — e.g. one day on the
+ * customer's calendar, which can straddle two of the provider's days.
+ */
+export function computeSlotsInRange(params: ComputeSlotsInRangeParams): AvailableSlot[] {
+  const { rangeStart, rangeEnd, timeZone = "UTC", ...rules } = params;
+
+  return providerDatesInRange(rangeStart, rangeEnd, timeZone)
+    .flatMap((date) => computeAvailableSlots({ ...rules, date, timeZone }))
+    .filter((slot) => slot.startTime >= rangeStart && slot.startTime < rangeEnd);
 }

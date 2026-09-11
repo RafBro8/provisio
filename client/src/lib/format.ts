@@ -12,15 +12,42 @@ export function formatDateTime(iso: string): string {
   });
 }
 
+/** Today on the viewer's own calendar, "YYYY-MM-DD" — not the UTC date, which is already tomorrow on a US evening. */
 export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+/** The viewer's IANA timezone, e.g. "America/Chicago". */
+export function browserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/** A time as the clock reads in another timezone, e.g. "3:00 PM". */
+export function formatTimeIn(iso: string, timeZone: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone });
+}
+
+/** "America/New_York" → "New York"; "UTC" stays "UTC". */
+export function timeZoneCity(timeZone: string): string {
+  return timeZone.split("/").pop()!.replace(/_/g, " ");
+}
+
+/** Whether two timezones' clocks read the same at a given instant (e.g. Chicago and Winnipeg in summer). */
+export function sameClockTime(iso: string, zoneA: string, zoneB: string): boolean {
+  return formatTimeIn(iso, zoneA) === formatTimeIn(iso, zoneB);
 }
 
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** Adds whole days to a YYYY-MM-DD date string, staying in UTC like todayIso(). */
+/**
+ * Adds whole days to a YYYY-MM-DD date string. Pure calendar arithmetic —
+ * UTC is only used internally so no daylight-saving shift can creep in.
+ */
 export function addDaysIso(isoDate: string, days: number): string {
   const date = new Date(`${isoDate}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);

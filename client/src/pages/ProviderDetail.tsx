@@ -8,7 +8,18 @@ import { useAuth } from "../context/AuthContext";
 import { SlotPicker } from "../components/SlotPicker";
 import { ArrowLeft, ArrowRight, Check, Clock } from "../components/icons";
 import { ProviderAvatar } from "../components/ProviderAvatar";
-import { addDaysIso, dayParts, formatDate, formatDateTime, formatStars, todayIso } from "../lib/format";
+import {
+  addDaysIso,
+  browserTimeZone,
+  dayParts,
+  formatDate,
+  formatDateTime,
+  formatStars,
+  formatTimeIn,
+  sameClockTime,
+  timeZoneCity,
+  todayIso,
+} from "../lib/format";
 import type { ProviderDetail as ProviderDetailData, Service, Slot, Review } from "../api/types";
 
 const DATE_STRIP_DAYS = 7;
@@ -182,6 +193,11 @@ export function ProviderDetail() {
 
   const { provider, services } = data;
   const lowestPrice = services.length > 0 ? Math.min(...services.map((s) => s.price)) : null;
+  const providerFirstName = provider.name.split(/\s+/)[0];
+  // Slots are always listed on the viewer's clock; say so when the
+  // provider's clock reads differently right now.
+  const viewerZone = browserTimeZone();
+  const isElsewhere = !sameClockTime(new Date().toISOString(), viewerZone, provider.timezone);
 
   return (
     <div className="flex flex-col">
@@ -288,6 +304,12 @@ export function ProviderDetail() {
                       className={`rounded-lg border border-rule bg-transparent px-2.5 py-1.5 font-mono text-[13px] text-ink dark:border-rule-dark dark:text-ink-dark ${FOCUS_RING}`}
                     />
                   </label>
+                  {isElsewhere && (
+                    <p className="text-[12.5px] leading-normal text-faint dark:text-faint-dark">
+                      Days and times are in your time zone ({timeZoneCity(viewerZone)}). {providerFirstName} is on{" "}
+                      {timeZoneCity(provider.timezone)} time.
+                    </p>
+                  )}
                 </div>
 
                 <SlotPicker
@@ -312,7 +334,11 @@ export function ProviderDetail() {
                       </div>
                       <div className="flex items-baseline justify-between gap-3 text-[13px] text-faint dark:text-faint-dark">
                         <span>{selectedService.durationMinutes} minutes</span>
-                        <span>Shown in your local time</span>
+                        <span>
+                          {sameClockTime(selectedSlot.startTime, viewerZone, provider.timezone)
+                            ? "Shown in your local time"
+                            : `${formatTimeIn(selectedSlot.startTime, provider.timezone)} in ${timeZoneCity(provider.timezone)}`}
+                        </span>
                       </div>
                     </div>
 

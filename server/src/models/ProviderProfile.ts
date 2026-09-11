@@ -1,4 +1,5 @@
 import { Schema, model, Types, type HydratedDocument } from "mongoose";
+import { isValidTimeZone } from "../utils/date";
 
 export interface IWorkingHoursBlock {
   dayOfWeek: number; // 0 (Sunday) – 6 (Saturday)
@@ -15,6 +16,8 @@ export interface ITimeOffBlock {
 export interface IProviderProfile {
   userId: Types.ObjectId;
   bio?: string;
+  /** IANA timezone working hours are read in, e.g. "Europe/London". Unset means UTC. */
+  timezone?: string;
   bufferMinutes: number;
   workingHours: IWorkingHoursBlock[];
   timeOff: ITimeOffBlock[];
@@ -44,6 +47,12 @@ const providerProfileSchema = new Schema<IProviderProfile>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     bio: { type: String, trim: true },
+    // Deliberately no default: profiles created before timezones existed
+    // read as UTC (their original behaviour) until the provider saves one.
+    timezone: {
+      type: String,
+      validate: { validator: isValidTimeZone, message: "Unknown time zone" },
+    },
     bufferMinutes: { type: Number, required: true, default: 15, min: 0 },
     workingHours: { type: [workingHoursSchema], default: [] },
     timeOff: { type: [timeOffSchema], default: [] },

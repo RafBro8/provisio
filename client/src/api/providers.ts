@@ -1,4 +1,5 @@
 import { apiRequest } from "./client";
+import { browserTimeZone } from "../lib/format";
 import type { ProviderListItem, ProviderDetail, Slot, ProviderProfile, WorkingHoursBlock, TimeOffBlock } from "./types";
 
 export function listProviders(): Promise<{ providers: ProviderListItem[] }> {
@@ -10,7 +11,9 @@ export function getProviderDetail(providerId: string): Promise<ProviderDetail> {
 }
 
 export function getAvailability(providerId: string, serviceId: string, date: string): Promise<{ slots: Slot[] }> {
-  const params = new URLSearchParams({ serviceId, date });
+  // Sending our timezone makes `date` mean this calendar day for the person
+  // looking, however far away the provider is.
+  const params = new URLSearchParams({ serviceId, date, tz: browserTimeZone() });
   return apiRequest<{ slots: Slot[] }>(`/providers/${providerId}/availability?${params.toString()}`);
 }
 
@@ -23,6 +26,7 @@ export interface UpdateProfilePayload {
   bufferMinutes?: number;
   workingHours?: WorkingHoursBlock[];
   timeOff?: TimeOffBlock[];
+  timezone?: string;
 }
 
 export function updateMyProfile(payload: UpdateProfilePayload): Promise<{ profile: ProviderProfile }> {

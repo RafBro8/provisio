@@ -1,9 +1,8 @@
 import type { Request, Response } from "express";
 import { Appointment, ProviderProfile, Service, Review } from "../models";
 import { AppError } from "../middleware/errorHandler";
-import { computeAvailableSlots } from "../services/availability.service";
+import { findOpenSlots } from "../services/openSlots.service";
 import { notify, notifyOtherParties } from "../services/notifications.service";
-import { startOfDay, endOfDay } from "../utils/date";
 
 const LATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -26,20 +25,16 @@ async function assertSlotIsOpen(
     throw new AppError(404, "Provider not found");
   }
 
-  const dayBookings = await Appointment.find({
+  // A one-millisecond range at the requested start: the only slot that can
+  // come back is one starting exactly then, on whichever of the provider's
+  // days it falls.
+  const slots = await findOpenSlots({
     providerId,
-    status: "booked",
-    ...(excludeAppointmentId ? { _id: { $ne: excludeAppointmentId } } : {}),
-    startTime: { $gte: startOfDay(targetStart), $lt: endOfDay(targetStart) },
-  });
-
-  const slots = computeAvailableSlots({
-    date: targetStart,
+    profile,
     serviceDurationMinutes,
-    bufferMinutes: profile.bufferMinutes,
-    workingHours: profile.workingHours,
-    timeOff: profile.timeOff,
-    existingBookings: dayBookings.map((b) => ({ startTime: b.startTime, endTime: b.endTime })),
+    rangeStart: targetStart,
+    rangeEnd: new Date(targetStart.getTime() + 1),
+    excludeAppointmentId,
   });
 
   const isOpen = slots.some((slot) => slot.startTime.getTime() === targetStart.getTime());

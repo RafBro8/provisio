@@ -1,16 +1,27 @@
 import { useEffect, useState } from "react";
 import { getMyProfile, updateMyProfile } from "../../api/providers";
 import { ApiError } from "../../api/client";
-import { todayIso } from "../../lib/format";
+import { browserTimeZone, todayIso } from "../../lib/format";
 import type { ProviderProfile, WorkingHoursBlock, TimeOffBlock } from "../../api/types";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+// Every zone the browser knows, plus UTC (which some browsers leave out).
+const TIME_ZONES = ["UTC", ...Intl.supportedValuesOf("timeZone").filter((zone) => zone !== "UTC")];
+
 const inputClass = "rounded border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900";
+
+function timeZoneHint(saved: string | undefined, current: string): string {
+  const browser = browserTimeZone();
+  if (!saved) return "Filled in from your browser. Your working hours are read in this time zone once you save.";
+  if (current.trim() !== browser) return `Your working hours are read in this time zone. Your browser is on ${browser}.`;
+  return "Your working hours are read in this time zone.";
+}
 
 export function ProviderAvailability() {
   const [profile, setProfile] = useState<ProviderProfile | null>(null);
   const [bio, setBio] = useState("");
   const [bufferMinutes, setBufferMinutes] = useState(15);
+  const [timezone, setTimezone] = useState("");
   const [workingHours, setWorkingHours] = useState<WorkingHoursBlock[]>([]);
   const [timeOff, setTimeOff] = useState<TimeOffBlock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,6 +36,9 @@ export function ProviderAvailability() {
         setProfile(res.profile);
         setBio(res.profile.bio ?? "");
         setBufferMinutes(res.profile.bufferMinutes);
+        // Providers who never picked one start from where their browser is;
+        // saving the form stores it.
+        setTimezone(res.profile.timezone ?? browserTimeZone());
         setWorkingHours(res.profile.workingHours);
         setTimeOff(
           res.profile.timeOff.map((t) => ({
@@ -68,7 +82,7 @@ export function ProviderAvailability() {
     setSaveError(null);
     setSavedMessage(null);
     try {
-      const res = await updateMyProfile({ bio, bufferMinutes, workingHours, timeOff });
+      const res = await updateMyProfile({ bio, bufferMinutes, workingHours, timeOff, timezone: timezone.trim() });
       setProfile(res.profile);
       setSavedMessage("Saved.");
     } catch (err) {
@@ -99,6 +113,28 @@ export function ProviderAvailability() {
             className={inputClass}
           />
         </label>
+      </div>
+
+      <div>
+        <label className="flex max-w-xs flex-col gap-1 text-sm">
+          Time zone
+          <input
+            list="provisio-time-zones"
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            className={inputClass}
+          />
+        </label>
+        <datalist id="provisio-time-zones">
+          {TIME_ZONES.map((zone) => (
+            <option key={zone} value={zone} />
+          ))}
+        </datalist>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          {timeZoneHint(profile.timezone, timezone)}
+        </p>
       </div>
 
       <div>
