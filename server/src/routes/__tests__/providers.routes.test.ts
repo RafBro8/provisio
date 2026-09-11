@@ -15,6 +15,26 @@ describe("providers routes", () => {
     expect(found).toMatchObject({ avgRating: null, reviewCount: 0 });
   });
 
+  it("summarises each provider's active services in the list: cheapest price, shortest session, count", async () => {
+    const { provider } = await setupProviderWithService(app, { dayOfWeek: 3, serviceDurationMinutes: 30, price: 50 });
+    await provider.agent.post("/api/services").send({ name: "Deep dive", durationMinutes: 90, price: 120 });
+    // A retired service is cheaper and shorter than both, but shouldn't count.
+    const retired = await provider.agent.post("/api/services").send({ name: "Old intro", durationMinutes: 15, price: 10 });
+    await provider.agent.patch(`/api/services/${retired.body.service._id}`).send({ isActive: false });
+
+    const res = await request(app).get("/api/providers");
+    const found = res.body.providers.find((p: { id: string }) => p.id === provider.id);
+    expect(found).toMatchObject({ fromPrice: 50, shortestMinutes: 30, serviceCount: 2 });
+  });
+
+  it("lists a provider with no services yet without inventing a price", async () => {
+    const provider = await registerTestUser(app, "provider");
+
+    const res = await request(app).get("/api/providers");
+    const found = res.body.providers.find((p: { id: string }) => p.id === provider.id);
+    expect(found).toMatchObject({ fromPrice: null, shortestMinutes: null, serviceCount: 0 });
+  });
+
   it("404s on a provider detail lookup for a non-existent id", async () => {
     const res = await request(app).get("/api/providers/000000000000000000000000");
     expect(res.status).toBe(404);

@@ -7,15 +7,8 @@ import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { SlotPicker } from "../components/SlotPicker";
 import { ArrowLeft, ArrowRight, Check, Clock } from "../components/icons";
-import {
-  addDaysIso,
-  dayParts,
-  formatDate,
-  formatDateTime,
-  formatStars,
-  initials,
-  todayIso,
-} from "../lib/format";
+import { ProviderAvatar } from "../components/ProviderAvatar";
+import { addDaysIso, dayParts, formatDate, formatDateTime, formatStars, todayIso } from "../lib/format";
 import type { ProviderDetail as ProviderDetailData, Service, Slot, Review } from "../api/types";
 
 const DATE_STRIP_DAYS = 7;
@@ -195,12 +188,11 @@ export function ProviderDetail() {
       <BackLink />
 
       <header className="mt-6 flex items-start gap-5 sm:gap-6">
-        <span
-          aria-hidden="true"
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-2 font-display text-[1.6rem] text-white sm:h-[74px] sm:w-[74px] sm:text-[1.9rem]"
-        >
-          {initials(provider.name)}
-        </span>
+        <ProviderAvatar
+          id={provider.id}
+          name={provider.name}
+          className="h-16 w-16 text-[1.6rem] sm:h-[74px] sm:w-[74px] sm:text-[1.9rem]"
+        />
         <div className="flex flex-col gap-2.5 pt-1">
           <h1 className="font-display text-[2.4rem] leading-[1.05] tracking-[-0.02em] sm:text-[2.9rem]">
             {provider.name}
@@ -208,7 +200,7 @@ export function ProviderDetail() {
           <p className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[15px] text-muted dark:text-muted-dark">
             {provider.avgRating !== null ? (
               <span>
-                <span className="text-star">★</span> {provider.avgRating}{" "}
+                <span className="text-star">★</span> {provider.avgRating.toFixed(1)}{" "}
                 <span className="text-faint dark:text-faint-dark">
                   ({provider.reviewCount} review{provider.reviewCount === 1 ? "" : "s"})
                 </span>
@@ -403,7 +395,7 @@ export function ProviderDetail() {
             aside={
               provider.avgRating !== null ? (
                 <span className="text-[13.5px] text-faint dark:text-faint-dark">
-                  <span className="text-star">★</span> {provider.avgRating} average · {provider.reviewCount} review
+                  <span className="text-star">★</span> {provider.avgRating.toFixed(1)} average · {provider.reviewCount} review
                   {provider.reviewCount === 1 ? "" : "s"}
                 </span>
               ) : undefined

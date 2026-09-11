@@ -1,8 +1,8 @@
 import { apiRequest } from "./client";
-import type { ProviderSummary, ProviderDetail, Slot, ProviderProfile, WorkingHoursBlock, TimeOffBlock } from "./types";
+import type { ProviderListItem, ProviderDetail, Slot, ProviderProfile, WorkingHoursBlock, TimeOffBlock } from "./types";
 
-export function listProviders(): Promise<{ providers: ProviderSummary[] }> {
-  return apiRequest<{ providers: ProviderSummary[] }>("/providers");
+export function listProviders(): Promise<{ providers: ProviderListItem[] }> {
+  return apiRequest<{ providers: ProviderListItem[] }>("/providers");
 }
 
 export function getProviderDetail(providerId: string): Promise<ProviderDetail> {

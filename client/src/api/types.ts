@@ -25,6 +25,13 @@ export interface ProviderSummary {
   reviewCount: number;
 }
 
+/** The providers list adds a summary of each provider's active services (null when there are none). */
+export interface ProviderListItem extends ProviderSummary {
+  fromPrice: number | null;
+  shortestMinutes: number | null;
+  serviceCount: number;
+}
+
 export interface ProviderDetail {
   provider: ProviderSummary;
   services: Service[];

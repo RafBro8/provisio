@@ -25,13 +25,42 @@ async function getRatingSummaries(providerIds: string[]): Promise<Map<string, Ra
   );
 }
 
+interface ServiceSummary {
+  fromPrice: number;
+  shortestMinutes: number;
+  serviceCount: number;
+}
+
+/** Cheapest price, shortest session, and count of each provider's active services. */
+async function getServiceSummaries(providerIds: string[]): Promise<Map<string, ServiceSummary>> {
+  const results = await Service.aggregate<{ _id: Types.ObjectId } & ServiceSummary>([
+    { $match: { providerId: { $in: providerIds.map((id) => new Types.ObjectId(id)) }, isActive: true } },
+    {
+      $group: {
+        _id: "$providerId",
+        fromPrice: { $min: "$price" },
+        shortestMinutes: { $min: "$durationMinutes" },
+        serviceCount: { $sum: 1 },
+      },
+    },
+  ]);
+
+  return new Map(
+    results.map(({ _id, fromPrice, shortestMinutes, serviceCount }) => [
+      _id.toString(),
+      { fromPrice, shortestMinutes, serviceCount },
+    ]),
+  );
+}
+
 export async function listProviders(_req: Request, res: Response): Promise<void> {
   const providers = await User.find({ role: "provider" }).select("name");
   const providerIds = providers.map((p) => String(p._id));
 
-  const [profiles, ratings] = await Promise.all([
+  const [profiles, ratings, services] = await Promise.all([
     ProviderProfile.find({ userId: { $in: providerIds } }),
     getRatingSummaries(providerIds),
+    getServiceSummaries(providerIds),
   ]);
   const profileByUserId = new Map(profiles.map((p) => [p.userId.toString(), p]));
 
@@ -39,12 +68,16 @@ export async function listProviders(_req: Request, res: Response): Promise<void>
     providers: providers.map((p) => {
       const id = String(p._id);
       const rating = ratings.get(id);
+      const service = services.get(id);
       return {
         id,
         name: p.name,
         bio: profileByUserId.get(id)?.bio ?? "",
         avgRating: rating?.avgRating ?? null,
         reviewCount: rating?.reviewCount ?? 0,
+        fromPrice: service?.fromPrice ?? null,
+        shortestMinutes: service?.shortestMinutes ?? null,
+        serviceCount: service?.serviceCount ?? 0,
       };
     }),
   });
