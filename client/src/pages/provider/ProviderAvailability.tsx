@@ -2,18 +2,23 @@ import { useEffect, useState } from "react";
 import { getMyProfile, updateMyProfile } from "../../api/providers";
 import { ApiError } from "../../api/client";
 import { browserTimeZone, todayIso } from "../../lib/format";
+import { CARD_CLASS, FIELD_CLASS, FOCUS_RING, SOLID_BUTTON, TEXT_BUTTON } from "../../lib/styles";
+import { ErrorNote, LoadingNote } from "../../components/ui";
+import { Check } from "../../components/icons";
 import type { ProviderProfile, WorkingHoursBlock, TimeOffBlock } from "../../api/types";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 // Every zone the browser knows, plus UTC (which some browsers leave out).
 const TIME_ZONES = ["UTC", ...Intl.supportedValuesOf("timeZone").filter((zone) => zone !== "UTC")];
 
-const inputClass = "rounded border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900";
+const FIELD_LABEL = "flex flex-col gap-1.5 text-[13px] text-muted dark:text-muted-dark";
+const COMPACT_FIELD = `rounded-lg border border-rule bg-surface px-2.5 py-2 text-sm text-ink dark:border-rule-dark dark:bg-surface-dark dark:text-ink-dark ${FOCUS_RING}`;
 
 function timeZoneHint(saved: string | undefined, current: string): string {
   const browser = browserTimeZone();
   if (!saved) return "Filled in from your browser. Your working hours are read in this time zone once you save.";
-  if (current.trim() !== browser) return `Your working hours are read in this time zone. Your browser is on ${browser}.`;
+  if (current.trim() !== browser)
+    return `Your working hours are read in this time zone. Your browser is on ${browser}.`;
   return "Your working hours are read in this time zone.";
 }
 
@@ -92,149 +97,192 @@ export function ProviderAvailability() {
     }
   }
 
-  if (isLoading) return <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>;
-  if (loadError) return <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>;
+  if (isLoading) return <LoadingNote />;
+  if (loadError) return <ErrorNote>{loadError}</ErrorNote>;
   if (!profile) return null;
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <label className="flex flex-col gap-1 text-sm">
-          Bio
-          <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} className={inputClass} />
-        </label>
-        <label className="mt-4 flex max-w-xs flex-col gap-1 text-sm">
-          Buffer time between appointments (minutes)
-          <input
-            type="number"
-            min={0}
-            value={bufferMinutes}
-            onChange={(e) => setBufferMinutes(Number(e.target.value))}
-            className={inputClass}
-          />
-        </label>
+    <div className="flex flex-col gap-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className={`${CARD_CLASS} flex flex-col gap-4 px-5 py-5 sm:px-6`} aria-labelledby="profile-heading">
+          <h3 id="profile-heading" className="font-display text-[1.4rem] tracking-[-0.01em]">
+            Profile
+          </h3>
+          <label className={FIELD_LABEL}>
+            Bio
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={4}
+              placeholder="What you do and who you help — shown on your public page."
+              className={FIELD_CLASS}
+            />
+          </label>
+          <label className={`${FIELD_LABEL} max-w-xs`}>
+            Buffer time between appointments (minutes)
+            <input
+              type="number"
+              min={0}
+              value={bufferMinutes}
+              onChange={(e) => setBufferMinutes(Number(e.target.value))}
+              className={`${FIELD_CLASS} font-mono`}
+            />
+          </label>
+        </section>
+
+        <section className={`${CARD_CLASS} flex flex-col gap-4 px-5 py-5 sm:px-6`} aria-labelledby="timezone-heading">
+          <h3 id="timezone-heading" className="font-display text-[1.4rem] tracking-[-0.01em]">
+            Time zone
+          </h3>
+          {/* A text input with suggestions rather than a <select>: there are
+              hundreds of zones, and typing a city is quicker than scrolling. */}
+          <label className={FIELD_LABEL}>
+            Time zone
+            <input
+              list="provisio-time-zones"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              className={`${FIELD_CLASS} font-mono`}
+            />
+          </label>
+          <datalist id="provisio-time-zones">
+            {TIME_ZONES.map((zone) => (
+              <option key={zone} value={zone} />
+            ))}
+          </datalist>
+          <p className="text-[13px] leading-relaxed text-faint dark:text-faint-dark">
+            {timeZoneHint(profile.timezone, timezone)} Customers always see times on their own clock.
+          </p>
+        </section>
       </div>
 
-      <div>
-        <label className="flex max-w-xs flex-col gap-1 text-sm">
-          Time zone
-          <input
-            list="provisio-time-zones"
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-            className={inputClass}
-          />
-        </label>
-        <datalist id="provisio-time-zones">
-          {TIME_ZONES.map((zone) => (
-            <option key={zone} value={zone} />
-          ))}
-        </datalist>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          {timeZoneHint(profile.timezone, timezone)}
-        </p>
-      </div>
-
-      <div>
-        <h3 className="font-medium">Working hours</h3>
-        <div className="mt-2 flex flex-col gap-2">
-          {workingHours.map((block, index) => (
-            <div key={index} className="flex flex-wrap items-center gap-2">
-              <select
-                value={block.dayOfWeek}
-                onChange={(e) => updateWorkingHoursBlock(index, { dayOfWeek: Number(e.target.value) })}
-                className={inputClass}
-              >
-                {DAY_NAMES.map((name, dayIndex) => (
-                  <option key={dayIndex} value={dayIndex}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="time"
-                value={block.startTime}
-                onChange={(e) => updateWorkingHoursBlock(index, { startTime: e.target.value })}
-                className={inputClass}
-              />
-              <span className="text-sm text-slate-500 dark:text-slate-400">to</span>
-              <input
-                type="time"
-                value={block.endTime}
-                onChange={(e) => updateWorkingHoursBlock(index, { endTime: e.target.value })}
-                className={inputClass}
-              />
-              <button
-                type="button"
-                onClick={() => removeWorkingHoursBlock(index)}
-                className="text-sm text-red-600 dark:text-red-400"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          {workingHours.length === 0 && (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No working hours set yet.</p>
-          )}
+      <section className={`${CARD_CLASS} flex flex-col gap-4 px-5 py-5 sm:px-6`} aria-labelledby="hours-heading">
+        <div className="flex flex-col gap-1">
+          <h3 id="hours-heading" className="font-display text-[1.4rem] tracking-[-0.01em]">
+            Weekly hours
+          </h3>
+          <p className="text-[13.5px] text-muted dark:text-muted-dark">
+            Add a block for each stretch you work. Two blocks on one day leave a gap, like lunch.
+          </p>
         </div>
-        <button type="button" onClick={addWorkingHoursBlock} className="mt-2 text-sm underline">
+        {workingHours.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-rule px-4 py-4 text-sm text-muted dark:border-rule-dark dark:text-muted-dark">
+            No working hours set yet, so customers won't see any open times.
+          </p>
+        ) : (
+          <div className="flex flex-col divide-y divide-rule-soft dark:divide-rule-soft-dark">
+            {workingHours.map((block, index) => (
+              <div key={index} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <select
+                  value={block.dayOfWeek}
+                  onChange={(e) => updateWorkingHoursBlock(index, { dayOfWeek: Number(e.target.value) })}
+                  aria-label="Day"
+                  className={`${COMPACT_FIELD} w-36`}
+                >
+                  {DAY_NAMES.map((name, dayIndex) => (
+                    <option key={dayIndex} value={dayIndex}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="time"
+                  value={block.startTime}
+                  onChange={(e) => updateWorkingHoursBlock(index, { startTime: e.target.value })}
+                  aria-label="From"
+                  className={`${COMPACT_FIELD} font-mono`}
+                />
+                <span className="text-sm text-faint dark:text-faint-dark">to</span>
+                <input
+                  type="time"
+                  value={block.endTime}
+                  onChange={(e) => updateWorkingHoursBlock(index, { endTime: e.target.value })}
+                  aria-label="To"
+                  className={`${COMPACT_FIELD} font-mono`}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeWorkingHoursBlock(index)}
+                  className={`ml-auto ${TEXT_BUTTON}`}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={addWorkingHoursBlock}
+          className={`w-fit ${TEXT_BUTTON} text-ink dark:text-ink-dark`}
+        >
           + Add working hours block
         </button>
-      </div>
+      </section>
 
-      <div>
-        <h3 className="font-medium">Time off</h3>
-        <div className="mt-2 flex flex-col gap-2">
-          {timeOff.map((block, index) => (
-            <div key={index} className="flex flex-wrap items-center gap-2">
-              <input
-                type="date"
-                value={block.startDate}
-                onChange={(e) => updateTimeOffBlock(index, { startDate: e.target.value })}
-                className={inputClass}
-              />
-              <span className="text-sm text-slate-500 dark:text-slate-400">to</span>
-              <input
-                type="date"
-                value={block.endDate}
-                onChange={(e) => updateTimeOffBlock(index, { endDate: e.target.value })}
-                className={inputClass}
-              />
-              <input
-                type="text"
-                placeholder="Reason (optional)"
-                value={block.reason ?? ""}
-                onChange={(e) => updateTimeOffBlock(index, { reason: e.target.value })}
-                className={inputClass}
-              />
-              <button
-                type="button"
-                onClick={() => removeTimeOffBlock(index)}
-                className="text-sm text-red-600 dark:text-red-400"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          {timeOff.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No time off scheduled.</p>}
+      <section className={`${CARD_CLASS} flex flex-col gap-4 px-5 py-5 sm:px-6`} aria-labelledby="timeoff-heading">
+        <div className="flex flex-col gap-1">
+          <h3 id="timeoff-heading" className="font-display text-[1.4rem] tracking-[-0.01em]">
+            Time off
+          </h3>
+          <p className="text-[13.5px] text-muted dark:text-muted-dark">
+            Whole days you're away. No times are offered on them, whatever your weekly hours say.
+          </p>
         </div>
-        <button type="button" onClick={addTimeOffBlock} className="mt-2 text-sm underline">
+        {timeOff.length === 0 ? (
+          <p className="text-sm text-muted dark:text-muted-dark">No time off scheduled.</p>
+        ) : (
+          <div className="flex flex-col divide-y divide-rule-soft dark:divide-rule-soft-dark">
+            {timeOff.map((block, index) => (
+              <div key={index} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <input
+                  type="date"
+                  value={block.startDate}
+                  onChange={(e) => updateTimeOffBlock(index, { startDate: e.target.value })}
+                  aria-label="First day off"
+                  className={`${COMPACT_FIELD} font-mono`}
+                />
+                <span className="text-sm text-faint dark:text-faint-dark">to</span>
+                <input
+                  type="date"
+                  value={block.endDate}
+                  onChange={(e) => updateTimeOffBlock(index, { endDate: e.target.value })}
+                  aria-label="Last day off"
+                  className={`${COMPACT_FIELD} font-mono`}
+                />
+                <input
+                  type="text"
+                  placeholder="Reason (optional)"
+                  value={block.reason ?? ""}
+                  onChange={(e) => updateTimeOffBlock(index, { reason: e.target.value })}
+                  className={`${COMPACT_FIELD} min-w-0 flex-1 basis-40`}
+                />
+                <button type="button" onClick={() => removeTimeOffBlock(index)} className={TEXT_BUTTON}>
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <button type="button" onClick={addTimeOffBlock} className={`w-fit ${TEXT_BUTTON} text-ink dark:text-ink-dark`}>
           + Add time off
         </button>
-      </div>
+      </section>
 
-      {saveError && <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>}
-      {savedMessage && <p className="text-sm text-green-600 dark:text-green-400">{savedMessage}</p>}
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={isSaving}
-        className="w-fit rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
-      >
-        {isSaving ? "Saving…" : "Save changes"}
-      </button>
+      <div className="flex flex-wrap items-center gap-4">
+        <button type="button" onClick={handleSave} disabled={isSaving} className={SOLID_BUTTON}>
+          {isSaving ? "Saving…" : "Save changes"}
+        </button>
+        {savedMessage && (
+          <span role="status" className="inline-flex items-center gap-1.5 text-sm text-ok-text dark:text-emerald-300">
+            <Check className="h-3.5 w-3.5" />
+            {savedMessage}
+          </span>
+        )}
+        {saveError && <ErrorNote>{saveError}</ErrorNote>}
+      </div>
     </div>
   );
 }

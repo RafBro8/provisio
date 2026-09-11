@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { createService, listMyServices, updateService } from "../../api/services";
 import { ApiError } from "../../api/client";
+import { ErrorNote, LoadingNote, SectionTitle } from "../../components/ui";
+import { CARD_CLASS, FIELD_CLASS, OUTLINE_BUTTON, SOLID_BUTTON, TEXT_BUTTON } from "../../lib/styles";
 import type { Service } from "../../api/types";
 
 interface ServiceFormState {
@@ -11,7 +13,64 @@ interface ServiceFormState {
 }
 
 const EMPTY_FORM: ServiceFormState = { name: "", description: "", durationMinutes: "30", price: "50" };
-const inputClass = "rounded border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900";
+const SMALL_LABEL = "flex flex-col gap-1.5 text-[13px] text-muted dark:text-muted-dark";
+
+/** The shared fields for adding or editing a service. */
+function ServiceFields({
+  form,
+  onChange,
+  required,
+}: {
+  form: ServiceFormState;
+  onChange: (patch: Partial<ServiceFormState>) => void;
+  required?: boolean;
+}) {
+  return (
+    <>
+      {/* The e2e suite fills this by its "Name" placeholder. */}
+      <input
+        required={required}
+        value={form.name}
+        onChange={(e) => onChange({ name: e.target.value })}
+        className={FIELD_CLASS}
+        placeholder="Name"
+        aria-label="Service name"
+      />
+      <textarea
+        value={form.description}
+        onChange={(e) => onChange({ description: e.target.value })}
+        className={FIELD_CLASS}
+        placeholder="Description (optional), e.g. one-to-one video call"
+        aria-label="Description"
+        rows={2}
+      />
+      <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
+        <label className={SMALL_LABEL}>
+          Duration (min)
+          <input
+            type="number"
+            min={5}
+            required={required}
+            value={form.durationMinutes}
+            onChange={(e) => onChange({ durationMinutes: e.target.value })}
+            className={`${FIELD_CLASS} font-mono`}
+          />
+        </label>
+        <label className={SMALL_LABEL}>
+          Price ($)
+          <input
+            type="number"
+            min={0}
+            required={required}
+            value={form.price}
+            onChange={(e) => onChange({ price: e.target.value })}
+            className={`${FIELD_CLASS} font-mono`}
+          />
+        </label>
+      </div>
+    </>
+  );
+}
 
 export function ProviderServices() {
   const [services, setServices] = useState<Service[]>([]);
@@ -97,144 +156,85 @@ export function ProviderServices() {
   }
 
   return (
-    <div>
-      <h3 className="font-medium">Your services</h3>
-      {isLoading && <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Loading…</p>}
-      {loadError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{loadError}</p>}
-
-      <ul className="mt-3 flex flex-col gap-3">
-        {services.map((service) => (
-          <li key={service._id} className="rounded border border-slate-300 p-3 dark:border-slate-700">
-            {editingId === service._id ? (
-              <div className="flex flex-col gap-2">
-                <input
-                  value={editForm.name}
-                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                  className={inputClass}
-                  placeholder="Name"
-                />
-                <textarea
-                  value={editForm.description}
-                  onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-                  className={inputClass}
-                  placeholder="Description"
-                  rows={2}
-                />
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min={5}
-                    value={editForm.durationMinutes}
-                    onChange={(e) => setEditForm((f) => ({ ...f, durationMinutes: e.target.value }))}
-                    className={inputClass}
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    value={editForm.price}
-                    onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
-                    className={inputClass}
-                  />
-                </div>
-                {editError && <p className="text-sm text-red-600 dark:text-red-400">{editError}</p>}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSaveEdit(service._id)}
-                    disabled={isSavingEdit}
-                    className="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
-                  >
-                    {isSavingEdit ? "Saving…" : "Save"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingId(null)}
-                    className="rounded border border-slate-300 px-3 py-1.5 text-sm dark:border-slate-700"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-medium">{service.name}</p>
-                  {service.description && (
-                    <p className="text-sm text-slate-600 dark:text-slate-400">{service.description}</p>
-                  )}
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {service.durationMinutes} min · ${service.price} · {service.isActive ? "Active" : "Inactive"}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <button type="button" onClick={() => startEdit(service)} className="text-sm underline">
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => handleToggleActive(service)} className="text-sm underline">
-                    {service.isActive ? "Deactivate" : "Activate"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </li>
-        ))}
+    <div className="grid gap-10 lg:grid-cols-12 lg:gap-14">
+      <section className="flex flex-col gap-4 lg:col-span-7" aria-labelledby="services-heading">
+        <SectionTitle id="services-heading">Your services</SectionTitle>
+        {isLoading && services.length === 0 && <LoadingNote />}
+        {loadError && <ErrorNote>{loadError}</ErrorNote>}
         {!isLoading && services.length === 0 && (
-          <p className="text-sm text-slate-500 dark:text-slate-400">You haven't added any services yet.</p>
+          <p className="text-muted dark:text-muted-dark">
+            You haven't added any services yet. Customers can't book you until you do.
+          </p>
         )}
-      </ul>
 
-      <form
-        onSubmit={handleCreate}
-        className="mt-6 flex flex-col gap-2 rounded border border-slate-300 p-4 dark:border-slate-700"
-      >
-        <h4 className="font-medium">Add a new service</h4>
-        <input
-          required
-          value={newForm.name}
-          onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))}
-          className={inputClass}
-          placeholder="Name"
-        />
-        <textarea
-          value={newForm.description}
-          onChange={(e) => setNewForm((f) => ({ ...f, description: e.target.value }))}
-          className={inputClass}
-          placeholder="Description (optional)"
-          rows={2}
-        />
-        <div className="flex gap-2">
-          <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
-            Duration (min)
-            <input
-              type="number"
-              min={5}
-              required
-              value={newForm.durationMinutes}
-              onChange={(e) => setNewForm((f) => ({ ...f, durationMinutes: e.target.value }))}
-              className={inputClass}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
-            Price ($)
-            <input
-              type="number"
-              min={0}
-              required
-              value={newForm.price}
-              onChange={(e) => setNewForm((f) => ({ ...f, price: e.target.value }))}
-              className={inputClass}
-            />
-          </label>
-        </div>
-        {createError && <p className="text-sm text-red-600 dark:text-red-400">{createError}</p>}
-        <button
-          type="submit"
-          disabled={isCreating}
-          className="mt-1 w-fit rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
-        >
-          {isCreating ? "Adding…" : "Add service"}
-        </button>
-      </form>
+        {services.length > 0 && (
+          <ul className="flex flex-col gap-3">
+            {services.map((service) => (
+              <li key={service._id} className={`${CARD_CLASS} px-5 py-4 ${service.isActive ? "" : "opacity-70"}`}>
+                {editingId === service._id ? (
+                  <div className="flex flex-col gap-3">
+                    <ServiceFields form={editForm} onChange={(patch) => setEditForm((f) => ({ ...f, ...patch }))} />
+                    {editError && <ErrorNote>{editError}</ErrorNote>}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEdit(service._id)}
+                        disabled={isSavingEdit}
+                        className={SOLID_BUTTON}
+                      >
+                        {isSavingEdit ? "Saving…" : "Save"}
+                      </button>
+                      <button type="button" onClick={() => setEditingId(null)} className={OUTLINE_BUTTON}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <span className="flex flex-wrap items-center gap-2.5">
+                        <span className="text-base font-semibold">{service.name}</span>
+                        {!service.isActive && (
+                          <span className="rounded-full bg-neutral-bg px-2.5 py-1 text-[11.5px] font-semibold text-muted dark:bg-white/8 dark:text-muted-dark">
+                            Hidden from customers
+                          </span>
+                        )}
+                      </span>
+                      {service.description && (
+                        <span className="text-[14px] text-muted dark:text-muted-dark">{service.description}</span>
+                      )}
+                      <span className="font-mono text-[13.5px] text-faint dark:text-faint-dark">
+                        {service.durationMinutes} min · ${service.price}
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 gap-4 pt-0.5">
+                      <button type="button" onClick={() => startEdit(service)} className={TEXT_BUTTON}>
+                        Edit
+                      </button>
+                      <button type="button" onClick={() => handleToggleActive(service)} className={TEXT_BUTTON}>
+                        {service.isActive ? "Hide" : "Show again"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="lg:col-span-5" aria-labelledby="add-service-heading">
+        <form onSubmit={handleCreate} className={`${CARD_CLASS} flex flex-col gap-3 px-5 py-5 sm:px-6`}>
+          <h3 id="add-service-heading" className="font-display text-[1.4rem] tracking-[-0.01em]">
+            Add a new service
+          </h3>
+          <ServiceFields form={newForm} onChange={(patch) => setNewForm((f) => ({ ...f, ...patch }))} required />
+          {createError && <ErrorNote>{createError}</ErrorNote>}
+          <button type="submit" disabled={isCreating} className={`mt-1 w-fit ${SOLID_BUTTON}`}>
+            {isCreating ? "Adding…" : "Add service"}
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

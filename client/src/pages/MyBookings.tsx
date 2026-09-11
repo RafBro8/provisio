@@ -7,20 +7,14 @@ import { SlotPicker } from "../components/SlotPicker";
 import { DateChooser } from "../components/DateChooser";
 import { StatusBadge, LateBadge } from "../components/StatusBadge";
 import { ArrowRight, Check } from "../components/icons";
-import { formatDateTime, formatTime, todayIso } from "../lib/format";
+import { formatDateTime, todayIso } from "../lib/format";
+import { DANGER_BUTTON, FIELD_CLASS, LABEL_CLASS, OUTLINE_BUTTON, SOLID_BUTTON } from "../lib/styles";
+import { DateBlock } from "../components/ui";
 import type { PopulatedAppointment, Slot } from "../api/types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
-const LABEL_CLASS = "text-[11.5px] font-bold tracking-[0.09em] uppercase text-faint dark:text-faint-dark";
-const FIELD_CLASS = `w-full rounded-lg border border-rule bg-transparent px-3 py-2 text-sm text-ink dark:border-rule-dark dark:text-ink-dark ${FOCUS_RING}`;
-const OUTLINE_BUTTON = `rounded-full border border-[#ded8ce] px-4 py-2 text-[13.5px] font-medium text-muted transition-colors hover:border-ink/40 hover:text-ink dark:border-rule-dark dark:text-muted-dark dark:hover:border-ink-dark/40 dark:hover:text-ink-dark ${FOCUS_RING}`;
-const SOLID_BUTTON = `inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-ground transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-ink-dark dark:text-ground-dark ${FOCUS_RING}`;
 
-function resolveRef(ref: string | { _id: string; name: string }): {
-  id: string;
-  name: string;
-} {
+function resolveRef(ref: string | { _id: string; name: string }): { id: string; name: string } {
   return typeof ref === "string" ? { id: ref, name: "Unknown" } : { id: ref._id, name: ref.name };
 }
 
@@ -30,32 +24,6 @@ function isUpcoming(appointment: PopulatedAppointment, now: number): boolean {
 
 function startsWithin24h(appointment: PopulatedAppointment): boolean {
   return new Date(appointment.startTime).getTime() - Date.now() < DAY_MS;
-}
-
-/**
- * The calendar-page block on the left of each row. Decorative — the full
- * date and time are in the row's text for screen readers.
- */
-function DateBlock({ iso, muted }: { iso: string; muted?: boolean }) {
-  const date = new Date(iso);
-  return (
-    <div
-      aria-hidden="true"
-      className={`flex shrink-0 flex-col items-center gap-0.5 whitespace-nowrap ${muted ? "w-14 sm:w-[74px]" : "w-[84px] border-r border-rule-soft pr-5 dark:border-rule-soft-dark"}`}
-    >
-      <span
-        className={`text-[11.5px] font-semibold tracking-[0.08em] uppercase ${muted ? "text-faint/80 dark:text-faint-dark" : "text-faint dark:text-faint-dark"}`}
-      >
-        {date.toLocaleDateString(undefined, muted ? { month: "short" } : { weekday: "short" })}
-      </span>
-      <span
-        className={`font-display leading-none ${muted ? "text-[1.75rem] text-muted/80 dark:text-muted-dark" : "text-[2.1rem]"}`}
-      >
-        {date.getDate()}
-      </span>
-      {!muted && <span className="font-mono text-[11.5px] text-muted dark:text-muted-dark">{formatTime(iso)}</span>}
-    </div>
-  );
 }
 
 function StarRating({ value, onChange }: { value: number; onChange: (rating: number) => void }) {
@@ -185,7 +153,7 @@ function BookingRow({ appointment, onChange, variant }: BookingRowProps) {
       <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
         <DateBlock iso={appointment.startTime} muted={isEarlier} />
 
-        <div className="flex min-w-0 flex-1 basis-48 flex-col gap-1">
+        <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1">
           <span
             className={`font-semibold tracking-[-0.012em] ${isEarlier ? "text-[16.5px] text-ink/85 dark:text-ink-dark/85" : "text-lg"}`}
           >
@@ -276,7 +244,7 @@ function BookingRow({ appointment, onChange, variant }: BookingRowProps) {
             type="button"
             onClick={handleConfirmCancel}
             disabled={isSubmitting}
-            className={`w-fit rounded-full bg-danger-text px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-red-400 dark:text-[#16131c] ${FOCUS_RING}`}
+            className={`w-fit ${DANGER_BUTTON}`}
           >
             {isSubmitting ? "Cancelling…" : "Confirm cancellation"}
           </button>

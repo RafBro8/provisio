@@ -1,18 +1,24 @@
-import { useEffect, useState } from "react";
-import { listAllBookings, cancelBooking } from "../../api/bookings";
+import { useState } from "react";
+import { cancelBooking } from "../../api/bookings";
 import { ApiError } from "../../api/client";
+import { StatusBadge, LateBadge } from "../../components/StatusBadge";
+import { ErrorNote, LoadingNote } from "../../components/ui";
+import { CARD_CLASS, DANGER_BUTTON, FIELD_CLASS, OUTLINE_BUTTON } from "../../lib/styles";
 import { formatDateTime } from "../../lib/format";
-import type { PopulatedAppointment, AppointmentStatus } from "../../api/types";
+import type { AppointmentStatus, PopulatedAppointment } from "../../api/types";
+
+type Filter = "all" | AppointmentStatus;
+
+const FILTERS: { id: Filter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "booked", label: "Booked" },
+  { id: "completed", label: "Completed" },
+  { id: "cancelled", label: "Cancelled" },
+];
 
 function resolveName(ref: string | { _id: string; name: string }): string {
   return typeof ref === "string" ? "Unknown" : ref.name;
 }
-
-const STATUS_STYLES: Record<AppointmentStatus, string> = {
-  booked: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-  cancelled: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
-  completed: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-};
 
 interface RowProps {
   appointment: PopulatedAppointment;
@@ -45,56 +51,53 @@ function BookingRow({ appointment, onChange }: RowProps) {
   }
 
   return (
-    <li className="rounded border border-slate-300 p-4 dark:border-slate-700">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="font-medium">{appointment.serviceId.name}</p>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+    <li className="px-5 py-4 sm:px-6">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <span className="w-44 shrink-0 font-mono text-[13px] text-muted dark:text-muted-dark">
+          {formatDateTime(appointment.startTime)}
+        </span>
+        <div className="flex min-w-0 flex-1 basis-56 flex-col gap-0.5">
+          <span className="font-semibold">{appointment.serviceId.name}</span>
+          <span className="text-[14px] text-muted dark:text-muted-dark">
             {resolveName(appointment.customerId)} with {resolveName(appointment.providerId)}
-          </p>
-          <p className="mt-1 text-sm">{formatDateTime(appointment.startTime)}</p>
+          </span>
           {appointment.status === "cancelled" && appointment.cancellationReason && (
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Reason: {appointment.cancellationReason}</p>
+            <span className="text-[13px] text-faint italic dark:text-faint-dark">
+              “{appointment.cancellationReason}”
+            </span>
           )}
         </div>
-        <span
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium capitalize ${STATUS_STYLES[appointment.status]}`}
-        >
-          {appointment.status}
-        </span>
-      </div>
-
-      {appointment.status === "booked" && (
-        <div className="mt-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={appointment.status} />
+          {appointment.lateCancellation && <LateBadge>Inside the 24h window</LateBadge>}
+        </div>
+        {appointment.status === "booked" && (
           <button
             type="button"
             onClick={() => setCancelOpen((open) => !open)}
-            className="rounded border border-slate-300 px-3 py-1.5 text-sm dark:border-slate-700"
+            className={`sm:ml-auto ${OUTLINE_BUTTON}`}
           >
             {cancelOpen ? "Never mind" : "Cancel (admin override)"}
           </button>
+        )}
+      </div>
+
+      {error && (
+        <div className="mt-3">
+          <ErrorNote>{error}</ErrorNote>
         </div>
       )}
 
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-
       {cancelOpen && (
-        <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-800">
-          <label className="flex flex-col gap-1 text-sm">
+        <div className="mt-4 flex max-w-xl flex-col gap-3 border-t border-rule-soft pt-4 dark:border-rule-soft-dark">
+          <p className="text-sm text-muted dark:text-muted-dark">
+            Both the customer and the provider are notified. The 24-hour rule still applies to the record.
+          </p>
+          <label className="flex flex-col gap-1.5 text-sm text-muted dark:text-muted-dark">
             Reason (optional)
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={2}
-              className="rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
-            />
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className={FIELD_CLASS} />
           </label>
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-            className="mt-3 rounded bg-red-600 px-4 py-2 text-sm text-white disabled:opacity-50"
-          >
+          <button type="button" onClick={handleCancel} disabled={isSubmitting} className={`w-fit ${DANGER_BUTTON}`}>
             {isSubmitting ? "Cancelling…" : "Confirm cancellation"}
           </button>
         </div>
@@ -103,34 +106,57 @@ function BookingRow({ appointment, onChange }: RowProps) {
   );
 }
 
-export function AdminBookings() {
-  const [appointments, setAppointments] = useState<PopulatedAppointment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface AdminBookingsProps {
+  appointments: PopulatedAppointment[];
+  isLoading: boolean;
+  error: string | null;
+  onChange: (updated: PopulatedAppointment) => void;
+}
 
-  useEffect(() => {
-    listAllBookings()
-      .then((res) => setAppointments(res.appointments))
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Couldn't load bookings"))
-      .finally(() => setIsLoading(false));
-  }, []);
+export function AdminBookings({ appointments, isLoading, error, onChange }: AdminBookingsProps) {
+  const [filter, setFilter] = useState<Filter>("all");
 
-  function handleChange(updated: PopulatedAppointment): void {
-    setAppointments((prev) => prev.map((a) => (a._id === updated._id ? updated : a)));
+  if (isLoading) return <LoadingNote />;
+  if (error) return <ErrorNote>{error}</ErrorNote>;
+  if (appointments.length === 0) {
+    return <p className="text-muted dark:text-muted-dark">No bookings on the platform yet.</p>;
   }
 
+  const visible = appointments
+    .filter((a) => filter === "all" || a.status === filter)
+    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
   return (
-    <div>
-      <h3 className="font-medium">All bookings</h3>
-      {isLoading && <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Loading…</p>}
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {!isLoading && !error && appointments.length === 0 && (
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">No bookings on the platform yet.</p>
-      )}
-      {!isLoading && !error && appointments.length > 0 && (
-        <ul className="mt-3 flex flex-col gap-3">
-          {appointments.map((appointment) => (
-            <BookingRow key={appointment._id} appointment={appointment} onChange={handleChange} />
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div role="radiogroup" aria-label="Filter by status" className="flex flex-wrap gap-2">
+          {FILTERS.map(({ id, label }) => (
+            <label key={id} className="group cursor-pointer">
+              <input
+                type="radio"
+                name="admin-booking-filter"
+                value={id}
+                checked={filter === id}
+                onChange={() => setFilter(id)}
+                className="sr-only"
+              />
+              <span className="block rounded-full border border-[#ded8ce] px-[15px] py-2 text-[13.5px] font-medium text-muted transition-colors group-hover:border-ink/40 group-has-[:checked]:border-transparent group-has-[:checked]:bg-ink group-has-[:checked]:font-semibold group-has-[:checked]:text-ground group-has-[:focus-visible]:outline-2 group-has-[:focus-visible]:outline-offset-2 group-has-[:focus-visible]:outline-brand dark:border-rule-dark dark:text-muted-dark dark:group-hover:border-ink-dark/40 dark:group-has-[:checked]:bg-ink-dark dark:group-has-[:checked]:text-ground-dark">
+                {label}
+              </span>
+            </label>
+          ))}
+        </div>
+        <span aria-live="polite" className="ml-auto text-[13.5px] text-faint dark:text-faint-dark">
+          {visible.length} booking{visible.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      {visible.length === 0 ? (
+        <p className="text-muted dark:text-muted-dark">Nothing matches this filter.</p>
+      ) : (
+        <ul className={`${CARD_CLASS} flex flex-col divide-y divide-rule-soft dark:divide-rule-soft-dark`}>
+          {visible.map((appointment) => (
+            <BookingRow key={appointment._id} appointment={appointment} onChange={onChange} />
           ))}
         </ul>
       )}

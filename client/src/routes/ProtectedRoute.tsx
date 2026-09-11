@@ -13,7 +13,7 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
   const location = useLocation();
 
   if (isLoading) {
-    return <p className="text-center text-slate-500 dark:text-slate-400">Loading…</p>;
+    return <p className="py-16 text-center text-sm text-faint dark:text-faint-dark">Loading…</p>;
   }
 
   if (!user) {

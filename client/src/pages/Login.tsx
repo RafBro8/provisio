@@ -2,6 +2,9 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, useLocation, Link, type Location } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../api/client";
+import { AuthCard } from "../components/AuthCard";
+import { ErrorNote } from "../components/ui";
+import { FIELD_CLASS, SOLID_BUTTON } from "../lib/styles";
 
 export function Login() {
   const { login } = useAuth();
@@ -29,44 +32,44 @@ export function Login() {
   }
 
   return (
-    <div className="mx-auto max-w-sm">
-      <h1 className="text-2xl font-semibold">Log in</h1>
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
+    <AuthCard
+      title="Welcome back"
+      intro="Log in to see your bookings and book your next session."
+      footer={
+        <>
+          Don't have an account?{" "}
+          <Link to="/register" className="font-medium text-ink underline underline-offset-2 dark:text-ink-dark">
+            Create one
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
           Email
           <input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+            className={FIELD_CLASS}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
           Password
           <input
             type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+            className={FIELD_CLASS}
           />
         </label>
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="rounded bg-slate-900 px-4 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
-        >
+        {error && <ErrorNote>{error}</ErrorNote>}
+        <button type="submit" disabled={isSubmitting} className={`mt-1 ${SOLID_BUTTON}`}>
           {isSubmitting ? "Logging in…" : "Log in"}
         </button>
       </form>
-      <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
-        Don't have an account?{" "}
-        <Link to="/register" className="underline">
-          Register
-        </Link>
-      </p>
-    </div>
+    </AuthCard>
   );
 }

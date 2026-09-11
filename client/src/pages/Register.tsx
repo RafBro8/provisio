@@ -3,6 +3,9 @@ import { useNavigate, Link } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../api/client";
 import type { UserRole } from "../api/types";
+import { AuthCard } from "../components/AuthCard";
+import { ErrorNote } from "../components/ui";
+import { FIELD_CLASS, SOLID_BUTTON } from "../lib/styles";
 
 export function Register() {
   const { register } = useAuth();
@@ -39,27 +42,35 @@ export function Register() {
     }
   }
 
-  const inputClass = "rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900";
-
   return (
-    <div className="mx-auto max-w-sm">
-      <h1 className="text-2xl font-semibold">Create an account</h1>
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
+    <AuthCard
+      title="Create your account"
+      intro="Book sessions with providers, or offer your own services."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link to="/login" className="font-medium text-ink underline underline-offset-2 dark:text-ink-dark">
+            Log in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
           Name
-          <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+          <input required value={name} onChange={(e) => setName(e.target.value)} className={FIELD_CLASS} />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
           Email
           <input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className={inputClass}
+            className={FIELD_CLASS}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
           Password
           <input
             type="password"
@@ -67,47 +78,39 @@ export function Register() {
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
+            className={FIELD_CLASS}
           />
         </label>
         <fieldset className="flex flex-col gap-2 text-sm">
-          <legend className="mb-1">I am a</legend>
-          <label className="flex items-center gap-2">
+          <legend className="mb-2 font-medium">I am a</legend>
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-rule px-3.5 py-3 text-muted transition-colors hover:border-ink/40 has-[:checked]:border-ink has-[:checked]:text-ink dark:border-rule-dark dark:text-muted-dark dark:hover:border-ink-dark/40 dark:has-[:checked]:border-ink-dark dark:has-[:checked]:text-ink-dark">
             <input
               type="radio"
               name="role"
               value="customer"
               checked={role === "customer"}
               onChange={() => setRole("customer")}
+              className="accent-brand"
             />
             Customer, looking to book appointments
           </label>
-          <label className="flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-rule px-3.5 py-3 text-muted transition-colors hover:border-ink/40 has-[:checked]:border-ink has-[:checked]:text-ink dark:border-rule-dark dark:text-muted-dark dark:hover:border-ink-dark/40 dark:has-[:checked]:border-ink-dark dark:has-[:checked]:text-ink-dark">
             <input
               type="radio"
               name="role"
               value="provider"
               checked={role === "provider"}
               onChange={() => setRole("provider")}
+              className="accent-brand"
             />
             Provider, offering services
           </label>
         </fieldset>
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="rounded bg-slate-900 px-4 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
-        >
+        {error && <ErrorNote>{error}</ErrorNote>}
+        <button type="submit" disabled={isSubmitting} className={`mt-1 ${SOLID_BUTTON}`}>
           {isSubmitting ? "Creating account…" : "Create account"}
         </button>
       </form>
-      <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
-        Already have an account?{" "}
-        <Link to="/login" className="underline">
-          Log in
-        </Link>
-      </p>
-    </div>
+    </AuthCard>
   );
 }

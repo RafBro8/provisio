@@ -1,32 +1,33 @@
-import { useEffect, useState } from "react";
-import { listProviderBookings, cancelBooking, completeBooking } from "../../api/bookings";
+import { useState } from "react";
+import { cancelBooking, completeBooking } from "../../api/bookings";
 import { ApiError } from "../../api/client";
+import { StatusBadge, LateBadge } from "../../components/StatusBadge";
+import { DateBlock, ErrorNote, LoadingNote, SectionTitle } from "../../components/ui";
+import { Check } from "../../components/icons";
+import { DANGER_BUTTON, FIELD_CLASS, OUTLINE_BUTTON, SOLID_BUTTON } from "../../lib/styles";
 import { formatDateTime } from "../../lib/format";
-import type { PopulatedAppointment, AppointmentStatus } from "../../api/types";
+import type { PopulatedAppointment } from "../../api/types";
 
 function resolveRef(ref: string | { _id: string; name: string }): { id: string; name: string } {
   return typeof ref === "string" ? { id: ref, name: "Unknown" } : { id: ref._id, name: ref.name };
 }
 
-const STATUS_STYLES: Record<AppointmentStatus, string> = {
-  booked: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-  cancelled: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
-  completed: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-};
+type Variant = "upcoming" | "to-complete" | "earlier";
 
 interface RowProps {
   appointment: PopulatedAppointment;
   onChange: (updated: PopulatedAppointment) => void;
+  variant: Variant;
 }
 
-function BookingRow({ appointment, onChange }: RowProps) {
+function BookingRow({ appointment, onChange, variant }: RowProps) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const customer = resolveRef(appointment.customerId);
-  const isPast = new Date(appointment.endTime).getTime() <= Date.now();
+  const isEarlier = variant === "earlier";
 
   async function handleCancel(): Promise<void> {
     setError(null);
@@ -61,64 +62,74 @@ function BookingRow({ appointment, onChange }: RowProps) {
   }
 
   return (
-    <li className="rounded border border-slate-300 p-4 dark:border-slate-700">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="font-medium">{appointment.serviceId.name}</p>
-          <p className="text-sm text-slate-600 dark:text-slate-400">with {customer.name}</p>
-          <p className="mt-1 text-sm">{formatDateTime(appointment.startTime)}</p>
+    <li
+      className={
+        isEarlier
+          ? "border-b border-rule-soft py-5 dark:border-rule-soft-dark"
+          : "rounded-[14px] border border-rule bg-surface px-5 py-5 sm:px-6 dark:border-rule-dark dark:bg-surface-dark"
+      }
+    >
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+        <DateBlock iso={appointment.startTime} muted={isEarlier} />
+
+        <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1">
+          <span
+            className={`font-semibold tracking-[-0.012em] ${isEarlier ? "text-[16.5px] text-ink/85 dark:text-ink-dark/85" : "text-lg"}`}
+          >
+            {appointment.serviceId.name}
+          </span>
+          <span
+            className={`text-[14.5px] ${isEarlier ? "text-faint dark:text-faint-dark" : "text-muted dark:text-muted-dark"}`}
+          >
+            with {customer.name} · {appointment.serviceId.durationMinutes} minutes
+            <span className="sr-only">, {formatDateTime(appointment.startTime)}</span>
+          </span>
           {appointment.status === "cancelled" && appointment.cancellationReason && (
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Reason: {appointment.cancellationReason}</p>
+            <span className="text-[13.5px] text-faint italic dark:text-faint-dark">
+              “{appointment.cancellationReason}”
+            </span>
           )}
         </div>
-        <span
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium capitalize ${STATUS_STYLES[appointment.status]}`}
-        >
-          {appointment.status}
-        </span>
+
+        <div className={`flex flex-wrap items-center gap-2 ${isEarlier ? "sm:ml-auto" : ""}`}>
+          <StatusBadge status={appointment.status} />
+          {appointment.lateCancellation && <LateBadge>Inside the 24h window</LateBadge>}
+          {appointment.lateReschedule && <LateBadge>Moved inside the 24h window</LateBadge>}
+        </div>
+
+        {!isEarlier && (
+          <div className="flex items-center gap-3 sm:ml-auto">
+            {variant === "to-complete" && (
+              <button type="button" onClick={handleComplete} disabled={isSubmitting} className={SOLID_BUTTON}>
+                <Check className="h-3.5 w-3.5" />
+                Mark complete
+              </button>
+            )}
+            {variant === "upcoming" && (
+              <button type="button" onClick={() => setCancelOpen((open) => !open)} className={OUTLINE_BUTTON}>
+                {cancelOpen ? "Never mind" : "Cancel"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {appointment.status === "booked" && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setCancelOpen((open) => !open)}
-            className="rounded border border-slate-300 px-3 py-1.5 text-sm dark:border-slate-700"
-          >
-            {cancelOpen ? "Never mind" : "Cancel"}
-          </button>
-          {isPast && (
-            <button
-              type="button"
-              onClick={handleComplete}
-              disabled={isSubmitting}
-              className="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
-            >
-              Mark complete
-            </button>
-          )}
+      {error && (
+        <div className="mt-4">
+          <ErrorNote>{error}</ErrorNote>
         </div>
       )}
 
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-
       {cancelOpen && (
-        <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-800">
-          <label className="flex flex-col gap-1 text-sm">
+        <div className="mt-5 flex max-w-xl flex-col gap-4 border-t border-rule-soft pt-5 dark:border-rule-soft-dark">
+          <p className="text-sm text-muted dark:text-muted-dark">
+            {customer.name} will be notified. A reason helps them rebook.
+          </p>
+          <label className="flex flex-col gap-1.5 text-sm text-muted dark:text-muted-dark">
             Reason (optional)
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={2}
-              className="rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
-            />
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className={FIELD_CLASS} />
           </label>
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-            className="mt-3 rounded bg-red-600 px-4 py-2 text-sm text-white disabled:opacity-50"
-          >
+          <button type="button" onClick={handleCancel} disabled={isSubmitting} className={`w-fit ${DANGER_BUTTON}`}>
             {isSubmitting ? "Cancelling…" : "Confirm cancellation"}
           </button>
         </div>
@@ -127,36 +138,81 @@ function BookingRow({ appointment, onChange }: RowProps) {
   );
 }
 
-export function ProviderBookings() {
-  const [appointments, setAppointments] = useState<PopulatedAppointment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface ProviderBookingsProps {
+  appointments: PopulatedAppointment[];
+  isLoading: boolean;
+  error: string | null;
+  onChange: (updated: PopulatedAppointment) => void;
+}
 
-  useEffect(() => {
-    listProviderBookings()
-      .then((res) => setAppointments(res.appointments))
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Couldn't load your bookings"))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  function handleChange(updated: PopulatedAppointment): void {
-    setAppointments((prev) => prev.map((a) => (a._id === updated._id ? updated : a)));
+export function ProviderBookings({ appointments, isLoading, error, onChange }: ProviderBookingsProps) {
+  if (isLoading) return <LoadingNote />;
+  if (error) return <ErrorNote>{error}</ErrorNote>;
+  if (appointments.length === 0) {
+    return (
+      <div className="rounded-[14px] border border-dashed border-rule px-6 py-10 dark:border-rule-dark">
+        <p className="font-display text-2xl">No bookings yet</p>
+        <p className="mt-2 text-muted dark:text-muted-dark">
+          Once customers book you, their sessions show up here. Check your Services and Availability tabs are set up.
+        </p>
+      </div>
+    );
   }
 
+  const now = Date.now();
+  const startMs = (a: PopulatedAppointment) => new Date(a.startTime).getTime();
+  const isPast = (a: PopulatedAppointment) => new Date(a.endTime).getTime() <= now;
+
+  const toComplete = appointments
+    .filter((a) => a.status === "booked" && isPast(a))
+    .sort((a, b) => startMs(a) - startMs(b));
+  const upcoming = appointments
+    .filter((a) => a.status === "booked" && !isPast(a))
+    .sort((a, b) => startMs(a) - startMs(b));
+  const earlier = appointments.filter((a) => a.status !== "booked").sort((a, b) => startMs(b) - startMs(a));
+
   return (
-    <div>
-      <h3 className="font-medium">Your bookings</h3>
-      {isLoading && <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Loading…</p>}
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {!isLoading && !error && appointments.length === 0 && (
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">No bookings yet.</p>
+    <div className="flex flex-col gap-14">
+      {toComplete.length > 0 && (
+        <section className="flex flex-col gap-4" aria-labelledby="to-complete-heading">
+          <div className="flex flex-col gap-1">
+            <SectionTitle id="to-complete-heading">Waiting to be marked complete</SectionTitle>
+            <p className="text-sm text-muted dark:text-muted-dark">
+              These have happened. Marking them complete lets the customer leave a review.
+            </p>
+          </div>
+          <ul className="flex flex-col gap-3">
+            {toComplete.map((a) => (
+              <BookingRow key={a._id} appointment={a} onChange={onChange} variant="to-complete" />
+            ))}
+          </ul>
+        </section>
       )}
-      {!isLoading && !error && appointments.length > 0 && (
-        <ul className="mt-3 flex flex-col gap-3">
-          {appointments.map((appointment) => (
-            <BookingRow key={appointment._id} appointment={appointment} onChange={handleChange} />
-          ))}
-        </ul>
+
+      <section className="flex flex-col gap-4" aria-labelledby="provider-upcoming-heading">
+        <SectionTitle id="provider-upcoming-heading">Upcoming</SectionTitle>
+        {upcoming.length === 0 ? (
+          <p className="text-muted dark:text-muted-dark">Nothing booked ahead right now.</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {upcoming.map((a) => (
+              <BookingRow key={a._id} appointment={a} onChange={onChange} variant="upcoming" />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {earlier.length > 0 && (
+        <section className="flex flex-col" aria-labelledby="provider-earlier-heading">
+          <div className="border-b border-rule pb-3 dark:border-rule-dark">
+            <SectionTitle id="provider-earlier-heading">Earlier</SectionTitle>
+          </div>
+          <ul className="flex flex-col">
+            {earlier.map((a) => (
+              <BookingRow key={a._id} appointment={a} onChange={onChange} variant="earlier" />
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );
