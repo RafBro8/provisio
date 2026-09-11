@@ -85,6 +85,9 @@
   --color-danger-text: #a24a3a;
   --color-neutral-bg: #efebe3;
 
+  /* rating stars — a warm amber that reads on both grounds */
+  --color-star: #d99a2b;
+
   --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
   --font-sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;

@@ -14,6 +14,8 @@ interface SlotPickerProps {
   refreshToken?: number;
 }
 
+const LABEL_CLASS = "text-[11.5px] font-bold tracking-[0.09em] uppercase text-faint dark:text-faint-dark";
+
 export function SlotPicker({ providerId, serviceId, date, selectedSlot, onSelectSlot, refreshToken }: SlotPickerProps) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,36 +42,54 @@ export function SlotPicker({ providerId, serviceId, date, selectedSlot, onSelect
     };
   }, [providerId, serviceId, date, refreshToken]);
 
+  let body;
   if (isLoading) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">Loading times…</p>;
-  }
-  if (error) {
-    return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
-  }
-  if (slots.length === 0) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">No open times on this day.</p>;
+    body = <p className="py-3 text-sm text-faint dark:text-faint-dark">Loading times…</p>;
+  } else if (error) {
+    body = <p className="py-3 text-sm text-danger-text dark:text-red-300">{error}</p>;
+  } else if (slots.length === 0) {
+    body = (
+      <p className="rounded-lg border border-dashed border-rule px-4 py-5 text-center text-sm text-muted dark:border-rule-dark dark:text-muted-dark">
+        No open times on this day.
+      </p>
+    );
+  } else {
+    // Only slot buttons carry aria-pressed on the booking page — the e2e
+    // suite finds them with `main button[aria-pressed]`, so nothing else
+    // there should use it.
+    body = (
+      <div role="group" aria-label="Available times" className="grid grid-cols-3 gap-2 font-mono sm:grid-cols-4">
+        {slots.map((slot) => {
+          const isSelected = selectedSlot?.startTime === slot.startTime;
+          return (
+            <button
+              key={slot.startTime}
+              type="button"
+              aria-pressed={isSelected}
+              onClick={() => onSelectSlot(slot)}
+              className={`rounded-lg border py-2.5 text-center text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                isSelected
+                  ? "border-transparent bg-gradient-to-br from-brand via-[#6d3bf5] to-brand-2 font-medium text-white"
+                  : "border-rule text-ink/85 hover:border-ink/50 hover:text-ink dark:border-[#372f47] dark:text-ink-dark/85 dark:hover:border-ink-dark/50 dark:hover:text-ink-dark"
+              }`}
+            >
+              {formatTime(slot.startTime)}
+            </button>
+          );
+        })}
+      </div>
+    );
   }
 
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-      {slots.map((slot) => {
-        const isSelected = selectedSlot?.startTime === slot.startTime;
-        return (
-          <button
-            key={slot.startTime}
-            type="button"
-            aria-pressed={isSelected}
-            onClick={() => onSelectSlot(slot)}
-            className={`rounded border px-3 py-2 text-sm ${
-              isSelected
-                ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
-                : "border-slate-300 hover:border-slate-500 dark:border-slate-700 dark:hover:border-slate-500"
-            }`}
-          >
-            {formatTime(slot.startTime)}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-baseline justify-between">
+        <span className={LABEL_CLASS}>Available times</span>
+        {!isLoading && !error && slots.length > 0 && (
+          <span className="text-[12.5px] text-faint dark:text-faint-dark">{slots.length} open</span>
+        )}
+      </div>
+      {body}
     </div>
   );
 }
