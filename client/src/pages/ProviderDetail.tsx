@@ -6,12 +6,11 @@ import { listProviderReviews } from "../api/reviews";
 import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { SlotPicker } from "../components/SlotPicker";
+import { DateChooser } from "../components/DateChooser";
 import { ArrowLeft, ArrowRight, Check, Clock } from "../components/icons";
 import { ProviderAvatar } from "../components/ProviderAvatar";
 import {
-  addDaysIso,
   browserTimeZone,
-  dayParts,
   formatDate,
   formatDateTime,
   formatStars,
@@ -21,8 +20,6 @@ import {
   todayIso,
 } from "../lib/format";
 import type { ProviderDetail as ProviderDetailData, Service, Slot, Review } from "../api/types";
-
-const DATE_STRIP_DAYS = 7;
 
 const LABEL_CLASS = "text-[11.5px] font-bold tracking-[0.09em] uppercase text-faint dark:text-faint-dark";
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
@@ -64,48 +61,6 @@ function LoadingSkeleton() {
           <div className="h-4 w-40 rounded bg-rule-soft dark:bg-rule-soft-dark" />
         </div>
       </div>
-    </div>
-  );
-}
-
-/**
- * The next week as a row of day chips — the common case is booking soon, and
- * this makes it one tap. Native radio inputs (visually hidden) rather than
- * buttons: arrow-key navigation comes for free, and it keeps the page's only
- * `button[aria-pressed]` elements the time slots themselves.
- */
-function DateStrip({ value, onChange }: { value: string; onChange: (date: string) => void }) {
-  const today = todayIso();
-  const days = Array.from({ length: DATE_STRIP_DAYS }, (_, i) => addDaysIso(today, i));
-
-  return (
-    <div role="radiogroup" aria-label="Date" className="grid grid-cols-7 gap-1.5">
-      {days.map((iso) => {
-        const { weekday, day, full } = dayParts(iso);
-        return (
-          // Styled from the label with :has(:checked) — a peer-* variant only
-          // reaches the input's siblings, not the text nested inside them.
-          <label key={iso} className="group cursor-pointer">
-            <input
-              type="radio"
-              name="booking-date"
-              value={iso}
-              aria-label={full}
-              checked={value === iso}
-              onChange={() => onChange(iso)}
-              className="sr-only"
-            />
-            <span className="flex flex-col items-center gap-0.5 rounded-[10px] border border-rule py-2.5 transition-colors group-hover:border-ink/40 group-has-[:checked]:border-transparent group-has-[:checked]:bg-ink group-has-[:focus-visible]:outline-2 group-has-[:focus-visible]:outline-offset-2 group-has-[:focus-visible]:outline-brand dark:border-rule-dark dark:group-hover:border-ink-dark/40 dark:group-has-[:checked]:bg-ink-dark">
-              <span className="text-[10.5px] tracking-[0.06em] uppercase text-faint group-has-[:checked]:text-[#b9b2c6] dark:text-faint-dark dark:group-has-[:checked]:text-[#857e93]">
-                {weekday}
-              </span>
-              <span className="font-mono text-[15px] text-ink/85 group-has-[:checked]:text-white dark:text-ink-dark/85 dark:group-has-[:checked]:text-ground-dark">
-                {day}
-              </span>
-            </span>
-          </label>
-        );
-      })}
     </div>
   );
 }
@@ -293,17 +248,7 @@ export function ProviderDetail() {
               <div className="flex flex-col gap-5 px-6 pt-5 pb-6">
                 <div className="flex flex-col gap-2.5">
                   <span className={LABEL_CLASS}>Date</span>
-                  <DateStrip value={date} onChange={handleDateChange} />
-                  <label className="flex items-center justify-between gap-3 pt-1 text-[13px] text-muted dark:text-muted-dark">
-                    Or pick another date
-                    <input
-                      type="date"
-                      value={date}
-                      min={todayIso()}
-                      onChange={(e) => handleDateChange(e.target.value)}
-                      className={`rounded-lg border border-rule bg-transparent px-2.5 py-1.5 font-mono text-[13px] text-ink dark:border-rule-dark dark:text-ink-dark ${FOCUS_RING}`}
-                    />
-                  </label>
+                  <DateChooser value={date} onChange={handleDateChange} />
                   {isElsewhere && (
                     <p className="text-[12.5px] leading-normal text-faint dark:text-faint-dark">
                       Days and times are in your time zone ({timeZoneCity(viewerZone)}). {providerFirstName} is on{" "}
